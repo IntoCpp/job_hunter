@@ -5,10 +5,7 @@ alwaysApply: true
 
 # Development Workflow
 
-These rules define the expected software development workflow to promote incremental, testable, and maintainable implementations.
-
-Guiding Principle:
-Implement one logical change at a time, verify it, and leave the project in a working state after every step.
+**Guiding principle:** Implement one logical change at a time, verify it, and leave the project in a working state after every step.
 
 ## General Philosophy
 
@@ -21,23 +18,10 @@ Implement one logical change at a time, verify it, and leave the project in a wo
 
 - Every significant new function shall include unit tests.
 - When modifying existing functionality, update existing tests as necessary.
-- Tests should cover:
-  - Normal usage
-  - Boundary conditions
-  - Invalid inputs
-  - Failure cases when practical
+- Tests should cover: normal usage, boundary conditions, invalid inputs, failure cases when practical.
 - Execute all relevant tests before considering a task complete.
-- Use:
-  - `uv`
-  - `uv run`
-  - `uv run pytest`
-
-Store reusable test data under:
-
-```text
-tests/
-    test_data/
-```
+- Use: `uv`, `uv run`, `uv run pytest`.
+- Store reusable test data under `tests/test_data/`.
 
 ## Dependencies
 
@@ -62,26 +46,8 @@ When modifying existing code:
 
 ## Development Process
 
-Before implementation:
-
-1. Read and understand:
-   - requirements.md
-   - design.md
-   - applicable project rules
-
-2. Ask clarification questions before coding if:
-   - requirements are ambiguous.
-   - design decisions are missing.
-   - multiple valid approaches could significantly affect the architecture.
-
-3. Before making significant changes:
-   - Explain the proposed approach.
-   - Identify affected files.
-   - Confirm consistency with requirements and design.
-
-4. Implement the requested functionality.
-
-5. Verify the implementation:
-   - Run relevant tests.
-   - Check that the implementation matches requirements and design.
-   - Provide an implementation report.
+1. **Read and understand:** `requirements.md`, `design.md`, applicable project rules.
+2. **Ask clarification questions before coding if:** requirements are ambiguous; design decisions are missing; multiple valid approaches could significantly affect the architecture.
+3. **Before making significant changes:** explain the proposed approach; identify affected files; confirm consistency with requirements and design.
+4. **Implement** the requested functionality.
+5. **Verify:** run relevant tests; check consistency with requirements and design; provide an implementation report.

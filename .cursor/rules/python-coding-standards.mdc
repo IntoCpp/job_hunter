@@ -5,10 +5,7 @@ alwaysApply: true
 
 # Python Coding Standards
 
-These rules establish the Python coding standards used throughout the project to maximize readability, maintainability, and code quality.
-
-Guiding Principle:
-Always choose the simplest readable solution that fully satisfies the requirements and design.
+**Guiding principle:** Choose the simplest readable solution that fully satisfies the requirements and design.
 
 ## General Principles
 
@@ -28,38 +25,19 @@ Always choose the simplest readable solution that fully satisfies the requiremen
 - Small utility functions are acceptable when they improve clarity.
 - Avoid unnecessary abstractions.
 
-Do not introduce:
-
-- Managers
-- Factories
-- Wrappers
-- Interfaces
-- Service layers
-
-unless they provide clear value or are required by the design.
+Avoid introducing unnecessary architectural layers such as managers, factories, wrappers, interfaces, or service layers unless they provide clear value or are required by the project design.
 
 ## Documentation
 
-Every public class shall contain a docstring.
-
-Every public function shall contain a docstring describing:
-
-- Purpose
-- Parameters
-- Return value
-
-Add comments only when they explain *why* the code exists or how a complex algorithm works.
-
-Do not add comments that merely repeat the code.
+- Every public class shall contain a docstring.
+- Every public function shall contain a docstring describing: purpose, parameters, return value.
+- Add comments only when they explain *why* the code exists or how a complex algorithm works.
+- Do not add comments that merely repeat the code.
 
 ## Type Hints
 
-Use type hints for:
-
-- Parameters
-- Return values
-
-Prefer modern Python typing.
+- Use type hints for parameters and return values.
+- Prefer modern Python typing.
 
 ## Python Practices
 
