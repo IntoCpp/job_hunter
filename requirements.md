@@ -2,7 +2,7 @@
 
 **Project:** Job-Hunter
 
-**Version:** 1.0
+**Version:** 1.2
 
 ---
 
@@ -25,9 +25,18 @@ The project uses AI agents and tools to search multiple sources for job postings
 
 The discovered postings are analyzed and ranked according to how well they match the candidate's resume and search criteria.
 
-The system shall support Internet search engines (Google, Bing, Brave, etc.) to discover job postings beyond the configured company and job-board URLs.
+For version 1, Internet search shall use **Serper** as the Google search provider. The search provider must be implemented behind an abstraction so it can be replaced later by another API, MCP service, or provider.
 
 The system shall be designed so that search tools (company websites, search engines, job boards, browser automation, or future MCP-backed services) are interchangeable without requiring changes to the JobHunter Agent orchestration logic.
+
+Search shall use a single high-level search tool with separate provider implementations for company websites, job boards, and search engines.
+
+### Job Discovery and Download Strategy
+
+For version 1, job posting discovery and content retrieval follow a two-phase approach:
+
+1. **Discovery** — Use Serper (or another configured search provider) to find job posting URLs. For job boards, use site-restricted search queries (e.g. `site:linkedin.com "Software Development Manager" Montreal`).
+2. **Download** — Once a URL is discovered, retrieve the job description directly using HTTP whenever possible. Fall back to Playwright only when necessary for JavaScript-rendered or dynamic pages.
 
 ---
 
@@ -35,9 +44,27 @@ The system shall be designed so that search tools (company websites, search engi
 
 The project uses a YAML configuration file containing all user-configurable information.
 
-The detailed YAML schema is outside the scope of this document and will be documented separately.
+## 3.1 Configuration File Location
 
-## 3.1 Output
+* **Production:** `config/config.yaml`
+* **Testing:** `.test/config.yaml` (used by tests and local development to avoid modifying production configuration)
+
+The application shall support a command-line option to override the configuration file path (default: `config/config.yaml`).
+
+The YAML configuration schema is documented in `design.md` (Section 17).
+
+## 3.2 Credentials
+
+API keys and secrets shall be stored in a `.env` file at the project root.
+
+The `.env` file shall be excluded from version control.
+
+Expected credentials for version 1:
+
+* OpenAI API key (OpenAI Agents SDK)
+* Serper API key
+
+## 3.3 Output
 
 ### posting_output
 
@@ -46,10 +73,18 @@ Folder where job postings and generated files are saved.
 Example:
 
 ```yaml
-posting_output: "C:\Users\ERIC\Documents\job_hunter_finds\"
+posting_output: "C:/Users/ERIC/Documents/job_hunter_finds/"
 ```
 
-Future documentation shall describe the generated files, directory structure, and naming conventions.
+Saved posting structure:
+
+```text
+<posting_output>/<company_name>/<job_title>.md
+```
+
+Company and job title names shall be sanitized for use as filesystem paths (invalid characters removed or replaced, spaces converted to underscores).
+
+If a target filename already exists, an alphabetical suffix shall be appended using the collision-resolution algorithm described in Section 6.9.
 
 ### Logging output
 
@@ -62,13 +97,15 @@ The system shall:
 
 Example:
 
+```text
 posting_output/
 └── logs/
-    ├── 2026-07-27_143100.log
+    └── 2026-07-27_143100.log
+```
 
 ---
 
-## 3.2 Input / Output
+## 3.4 Input / Output
 
 ### posting_history
 
@@ -89,10 +126,12 @@ The history shall contain, whenever available:
 * Location
 * URL
 * Date first found
-* Date last seen (future enhancement)
+* Date last seen
 * Ranking score
 * Path to the Markdown description
 * Additional metadata (when reasonably small)
+
+When a duplicate posting is detected (same company, job title, and location), the system shall update **date last seen** to indicate the posting was encountered again.
 
 Large fields such as the complete job description shall be stored separately.
 
@@ -106,62 +145,90 @@ rather than the posting URL alone.
 
 ---
 
-## 3.3 Input
+## 3.5 Input
 
-### Resume
+### resume
 
 Path to the resume in Markdown format.
 
+Used by Job-Hunter for ranking and analysis. This is independent of the resume files used internally by the resume customization script (see Section 3.6).
+
 ### resume_analysis
 
-Path to the YAML file containing the structured analysis of the resume.
+Path to a JSON file containing the structured analysis of the resume.
 
-### list_of_jobs
+A production sample is available at `test/master_resume_analysis_cache.json`. This file contains personal data and shall be excluded from version control. Tests shall use an anonymized copy.
+
+The JSON schema is documented in `design.md` (Section 18).
+
+### jobs
 
 List of desired job types.
 
 Each job definition contains:
 
-* title
-* description
+* `title`
+* `description`
 
 The title is only a guideline.
 
-The search agent shall also recognize equivalent or similar titles that describe the same type of position.
+Equivalent or similar job titles shall be recognized primarily through LLM-based interpretation.
 
 The description exists to clarify ambiguous titles.
 
-Example:
+Example titles:
 
 * Software Development Manager
 * Software Team Lead
 * Software Engineering Manager
 * Software Quality Assurance Manager
 
----
+### title_aliases (optional)
 
-### list_of_locations
+Optional list of user-defined title aliases or exclusions for recurring cases.
+
+The system shall not depend on this list; LLM-based interpretation remains the primary mechanism.
+
+Example:
+
+```yaml
+title_aliases:
+  - "Software Development Manager"
+  - "Engineering Manager"
+  - "Software Team Lead"
+```
+
+### locations
 
 List of acceptable locations.
 
-A location may be expressed as:
+Each location entry contains:
 
-* City
-* Region
-* Postal code
-* Geographic area
+* `name` — short human-readable label
+* `description` — clarifies the geographic scope
+
+Location matching shall be performed using AI-assisted interpretation.
+
+The design shall allow future migration to structured geographic data (postal codes, coordinates) without changing the overall architecture.
+
+Example:
+
+```yaml
+locations:
+  - name: "Montreal Greater Area"
+    description: "Montreal and surrounding areas accessible by public transport or reasonable commute"
+
+  - name: "South Shore"
+    description: "Longueuil, Brossard, Saint-Hubert, and nearby cities"
+```
 
 Any posting outside the acceptable locations shall be rejected.
 
-The exact representation will be determined later.
+### web_sites
 
----
+List of preferred search sources, including company career pages and job boards.
 
-### list_of_web_sites
-
-List of preferred search sources.
-
-This list may include:
+Additional sources may be added without changing the project architecture.
 
 #### Preferred companies
 
@@ -174,6 +241,8 @@ Examples:
 
 #### Job boards
 
+Job boards are used as discovery sources. Posting URLs are found via site-restricted search queries through the configured search provider (Serper for v1). Content is downloaded directly from the discovered URL (HTTP first, Playwright fallback).
+
 Examples:
 
 * LinkedIn
@@ -184,15 +253,48 @@ Examples:
 * Eightfold
 * UltiPro
 
-Additional sources may be added without changing the project architecture.
+### models
 
----
+OpenAI model identifiers for agent orchestration, ranking, and other AI-assisted operations.
+
+Model selection shall be configurable and not hardcoded. The initial implementation shall use cost-effective models for most operations and allow more capable models for complex ranking or ambiguous cases.
 
 ### confidence_resume
 
-Confidence threshold (0.00–1.00).
+Confidence threshold (0.00–1.00). Default: **0.90**.
 
-When a posting reaches or exceeds this threshold, the system shall automatically invoke the resume customization script.
+When a posting reaches or exceeds this threshold, the system shall automatically invoke the resume customization script. Postings below the threshold remain in the history file and can be processed manually with the resume customization script if desired.
+
+---
+
+## 3.6 Resume Customization Script
+
+The resume customization script is a **separate project** and shall not be modified by Job-Hunter.
+
+| Setting | Value |
+|---------|-------|
+| Script path | `C:\Users\ERIC\Documents\Code\job-hunter-resume-rework\resume_rework.py` |
+| Working directory | `C:\Users\ERIC\Documents\Code\job-hunter-resume-rework\` |
+
+The script must be invoked from its own working directory because it uses relative paths for configuration and input files.
+
+Invocation example:
+
+```text
+uv run resume_rework.py --job-posting C:\Users\ERIC\Documents\job_hunter_finds\Alstom\Senior_software_developper.md
+```
+
+Only the `--job-posting` argument is required. Job-Hunter shall pass the path to the saved Markdown posting file.
+
+When triggered, the script creates output files in the same folder as the job posting:
+
+* `<name>_analysis_cache.json`
+* `<name>_cresume.md`
+* `<name>_cresume.docx`
+* `<name>_changes_made.txt`
+* `<name>_cover_letter.txt`
+
+Invocation shall be **fire-and-forget**: Job-Hunter shall not wait for the script to complete. A unit test shall verify invocation using a dummy job posting in the test folder.
 
 ---
 
@@ -200,7 +302,7 @@ When a posting reaches or exceeds this threshold, the system shall automatically
 
 ## test_mode
 
-Limits processing to a small number of postings.
+Limits processing to **two postings**.
 
 Purpose:
 
@@ -208,19 +310,17 @@ Purpose:
 * Lower AI costs
 * Easier debugging
 
----
-
 ## verbose
 
 Produces detailed execution information.
 
-Verbose mode shall automatically be enabled while test mode is active.
+Verbose mode shall be **automatically and unconditionally enabled** when test mode is active. This behavior is hardcoded and not overridable via CLI.
 
 ---
 
 # 5. High-Level Architecture
 
-```
+```text
                 JobHunter Agent
                       │
       ┌───────────────┼────────────────┐
@@ -244,6 +344,7 @@ Verbose mode shall automatically be enabled while test mode is active.
 * Tools shall be designed for future interchangeability.
 * A tool may internally use AI agents and additional tools.
 * Future implementations may replace local tools with MCP-backed services without requiring architectural changes.
+* Reusable business logic shared by multiple tools shall reside in `services/` (see `design.md`).
 
 ---
 
@@ -256,9 +357,9 @@ Verbose mode shall automatically be enabled while test mode is active.
 
    * Company websites
    * Job boards
-   * Internet search engines
-5. Duplicate postings are removed using the posting history.
-6. Each remaining posting is downloaded.
+   * Internet search engines (via Serper)
+5. Duplicate postings are removed using the posting history. When a duplicate is found, **date last seen** is updated and further processing for that posting is skipped.
+6. Each remaining posting is downloaded (HTTP preferred; Playwright fallback for dynamic pages).
 7. Relevant information is extracted, including:
 
    * Company
@@ -266,25 +367,40 @@ Verbose mode shall automatically be enabled while test mode is active.
    * Description
    * Location
    * Address (when available)
-8. Each posting is ranked against the candidate profile using a confidence score between **0.00** and **1.00**.
-9. Each posting is written as a Markdown document:
+8. Deterministic filtering is applied before ranking:
 
-```
-<posting_output>/<business_name>/<job_title>.md
+   * Location filtering
+   * Duplicate detection
+   * Basic configuration rules
+9. Each remaining posting is ranked against the candidate profile. The LLM performs semantic evaluation (resume/job fit, equivalent experience, similar responsibilities, terminology, job title interpretation) and produces a confidence score between **0.00** and **1.00**.
+10. Each posting is written as a Markdown document:
+
+```text
+<posting_output>/<company_name>/<job_title>.md
 ```
 
-If necessary, a unique suffix shall be added.
+11. The posting history is updated.
+12. If the confidence score is greater than or equal to **confidence_resume**, the resume customization script is invoked (fire-and-forget).
+
+## 6.9 Filename Collision Resolution
+
+When a target filename already exists, append an alphabetical suffix: `_a`, `_b`, … `_z`, then `_aa`, `_ab`, etc., until an available filename is found.
+
+* The suffix applies only when a collision occurs.
+* The original filename is always preferred.
+* The algorithm must be deterministic.
 
 Examples:
 
-```
+```text
 Software_Development_Manager.md
 Software_Development_Manager_a.md
 Software_Development_Manager_b.md
+...
+Software_Development_Manager_z.md
+Software_Development_Manager_aa.md
+Software_Development_Manager_ab.md
 ```
-
-10. The posting history is updated.
-11. If the confidence score is greater than or equal to **confidence_resume**, the resume customization script is automatically executed.
 
 ---
 
@@ -294,10 +410,14 @@ The initial implementation shall use:
 
 * Python
 * OpenAI Agents SDK
+* Serper (Google search provider)
+* Playwright (browser automation fallback)
 * `uv` for package and virtual environment management
 * `uv run` to execute the application
 * Cursor as the AI-assisted development environment
 * Visual Studio Code as the primary code editor
 * Windows as the primary execution platform
+
+Browser automation is a fallback mechanism when HTTP extraction is insufficient.
 
 Docker, MCP services, and additional infrastructure are considered future enhancements and shall not be required for the first working version.
