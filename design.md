@@ -416,7 +416,7 @@ Generate summary
 
 The workflow shall provide enough runtime information for a user to understand the current operation.
 
-In test mode, processing is limited to two postings and verbose logging is unconditionally enabled.
+When the `--test` flag is passed, processing is limited to two postings and verbose logging is automatically enabled.
 
 ---
 
@@ -459,12 +459,14 @@ Completed.
 
 ## Debug
 
-Enabled by:
+Debug logging is enabled when either:
 
-* Command-line verbose mode.
-* Test mode (always enabled, hardcoded).
+* The user passes `--verbose` on the command line, or
+* The user passes `--test` on the command line.
 
-Provides detailed information for troubleshooting.
+Passing `--test` automatically enables verbose logging in addition to limiting processing to two postings. This verbose-in-test-mode coupling is hardcoded and cannot be overridden.
+
+Test mode is **not** enabled by default; it requires the `--test` flag.
 
 Debug logging may include:
 
@@ -676,8 +678,8 @@ uv run job-hunter --test
 | Flag | Effect |
 |------|--------|
 | `--config PATH` | Configuration file path (default: `config/config.yaml`) |
-| `--test` | Limit to 2 postings; enable verbose (hardcoded) |
-| `--verbose` | Enable debug logging (ignored when `--test` is active, since test mode always enables verbose) |
+| `--test` | Enable test mode: limit to 2 postings and automatically enable verbose (hardcoded) |
+| `--verbose` | Enable debug logging (redundant when `--test` is also passed, since `--test` always enables verbose) |
 
 ---
 

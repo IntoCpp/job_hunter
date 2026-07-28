@@ -302,6 +302,8 @@ Invocation shall be **fire-and-forget**: Job-Hunter shall not wait for the scrip
 
 ## test_mode
 
+Enabled via the `--test` command-line flag. Not enabled by default.
+
 Limits processing to **two postings**.
 
 Purpose:
@@ -312,9 +314,11 @@ Purpose:
 
 ## verbose
 
+Enabled via the `--verbose` command-line flag.
+
 Produces detailed execution information.
 
-Verbose mode shall be **automatically and unconditionally enabled** when test mode is active. This behavior is hardcoded and not overridable via CLI.
+When `--test` is present, verbose is **automatically and unconditionally enabled** as well. This coupling is hardcoded and cannot be disabled via CLI.
 
 ---
 
