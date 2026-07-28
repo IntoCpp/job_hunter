@@ -14,3 +14,34 @@ The project documentation is organized as follows:
 ## Status
 
 Project currently in the design phase.
+
+## Work plan
+
+* Phase 1 — Understanding:
+  * Read the project documentation and ask any questions before implementation.
+  * Make sure the files under "./cursor/rules" are formatted to be used efficiently by Cursor. The current format is Markdown, you can change it to something more efficient for you. Do not change, add or remove any rules.
+* Phase 2 — Setup
+  * Create the `.gitigore` file for this project. Keep it updated as needed in this step.
+  * Setup the Python project:
+
+```text
+uv
+dependencies
+project structure
+initial tests
+```  
+
+* Phase 3 — Implementation
+  * Implement the project according to requirements.md and design.md.
+
+### Implementation with Cursor
+
+Phase 3 will be done as a conversation plan like this:
+
+1. Project skeleton + configuration loading.
+2. Models + history storage.
+3. Search tools.
+4. Extraction.
+5. Ranking.
+6. Resume integration.
+7. Improvements.

@@ -57,4 +57,31 @@ Before introducing a new third-party dependency:
 When modifying existing code:
 
 - Prefer extending the current implementation.
+- Before adding new complexity, verify that the existing design cannot solve the problem with a simpler approach.
 - Avoid rewriting working code unless a redesign is requested or clearly justified.
+
+## Development Process
+
+Before implementation:
+
+1. Read and understand:
+   - requirements.md
+   - design.md
+   - applicable project rules
+
+2. Ask clarification questions before coding if:
+   - requirements are ambiguous.
+   - design decisions are missing.
+   - multiple valid approaches could significantly affect the architecture.
+
+3. Before making significant changes:
+   - Explain the proposed approach.
+   - Identify affected files.
+   - Confirm consistency with requirements and design.
+
+4. Implement the requested functionality.
+
+5. Verify the implementation:
+   - Run relevant tests.
+   - Check that the implementation matches requirements and design.
+   - Provide an implementation report.
