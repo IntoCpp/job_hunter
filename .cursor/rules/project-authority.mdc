@@ -1,0 +1,47 @@
+---
+description: Project authority and document consistency rules
+alwaysApply: true
+---
+
+# Project Authority
+
+These rules ensure that all implementations remain consistent with the project's documented requirements and architecture.
+
+Guiding Principle:
+The documented requirements and design are more important than assumptions. When in doubt, ask before implementing.
+
+## Document Authority
+
+- `requirements.md` is the authoritative source for functional requirements.
+- `design.md` is the authoritative source for the software architecture and technical design.
+
+## Consistency
+
+Before implementing any feature:
+
+- Verify consistency with `requirements.md`.
+- Verify consistency with `design.md`.
+
+If implementation conflicts with either document:
+
+- Do **not** silently modify the code.
+- Explain the conflict.
+- Propose an update.
+- Wait for approval before changing the architecture or requirements.
+
+If requirements are missing or ambiguous:
+
+- Ask for clarification before implementing.
+
+If the design is missing or ambiguous:
+
+- Explain the ambiguity.
+- Propose one or more reasonable design approaches.
+- Wait for approval when the choice affects future architecture.
+
+When implementing enhancements:
+
+- Reuse the existing design whenever practical.
+- Update `design.md` whenever the architecture changes.
+
+Never introduce architectural changes that are not documented.

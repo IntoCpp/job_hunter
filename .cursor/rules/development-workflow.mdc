@@ -1,0 +1,60 @@
+---
+description: Development workflow and testing requirements
+alwaysApply: true
+---
+
+# Development Workflow
+
+These rules define the expected software development workflow to promote incremental, testable, and maintainable implementations.
+
+Guiding Principle:
+Implement one logical change at a time, verify it, and leave the project in a working state after every step.
+
+## General Philosophy
+
+- Prefer small, focused implementation steps.
+- Complete one logical feature before starting the next.
+- Avoid broad refactoring unless explicitly requested.
+- Choose the simplest solution that fully satisfies the requirements and design.
+
+## Testing
+
+- Every significant new function shall include unit tests.
+- When modifying existing functionality, update existing tests as necessary.
+- Tests should cover:
+  - Normal usage
+  - Boundary conditions
+  - Invalid inputs
+  - Failure cases when practical
+- Execute all relevant tests before considering a task complete.
+- Use:
+  - `uv`
+  - `uv run`
+  - `uv run pytest`
+
+Store reusable test data under:
+
+```text
+tests/
+    test_data/
+```
+
+## Dependencies
+
+Before introducing a new third-party dependency:
+
+- Determine whether the Python standard library already provides an acceptable solution.
+- Justify any new dependency.
+
+## Project Structure
+
+- Do not create new folders unless they improve the project organization.
+- Reuse existing modules whenever practical.
+- Keep modules cohesive and focused.
+
+## Code Evolution
+
+When modifying existing code:
+
+- Prefer extending the current implementation.
+- Avoid rewriting working code unless a redesign is requested or clearly justified.

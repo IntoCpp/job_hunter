@@ -1,0 +1,54 @@
+---
+description: Format for implementation reports after development tasks
+alwaysApply: true
+---
+
+# Implementation Report
+
+These rules define the format of the implementation summary provided after each completed development task, ensuring concise and consistent reporting.
+
+Guiding Principle:
+Report only information that helps the developer understand what changed and what remains to be done.
+
+After completing each implementation task, provide a concise report containing only the following sections.
+
+## Implementation Summary
+
+A short description (3–8 bullet points) of what was implemented.
+
+## Files Modified
+
+List:
+
+* New files
+* Modified files
+* Deleted files (if any)
+
+Include a one-line description of the purpose of each important file.
+
+## Tests
+
+Summarize:
+
+* Tests added
+* Tests executed
+* Test results
+
+## Design Changes
+
+If the implementation required changes to the design:
+
+* Describe the change.
+* Identify the affected section of `design.md`.
+
+Otherwise simply state:
+
+> No design changes.
+
+## Remaining TODOs
+
+List any known limitations or follow-up work discovered during implementation.
+
+If none:
+
+> None.

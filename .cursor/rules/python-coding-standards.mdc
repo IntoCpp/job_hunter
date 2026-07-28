@@ -1,0 +1,83 @@
+---
+description: Python coding standards and style guidelines
+alwaysApply: true
+---
+
+# Python Coding Standards
+
+These rules establish the Python coding standards used throughout the project to maximize readability, maintainability, and code quality.
+
+Guiding Principle:
+Always choose the simplest readable solution that fully satisfies the requirements and design.
+
+## General Principles
+
+- Follow PEP 8 except for a maximum line length of 120 characters.
+- Prefer readability over cleverness.
+- Keep functions small and focused.
+- Use meaningful, pronounceable names.
+- Prefer early returns over deep nesting.
+- Avoid duplicated code.
+- Keep the project easy to understand.
+
+## Project Design
+
+- Prefer composition over inheritance.
+- Follow the architecture described in `design.md`.
+- classes when they naturally model the problem.
+- Small utility functions are acceptable when they improve clarity.
+- Avoid unnecessary abstractions.
+
+Do not introduce:
+
+- Managers
+- Factories
+- Wrappers
+- Interfaces
+- Service layers
+
+unless they provide clear value or are required by the design.
+
+## Documentation
+
+Every public class shall contain a docstring.
+
+Every public function shall contain a docstring describing:
+
+- Purpose
+- Parameters
+- Return value
+
+Add comments only when they explain *why* the code exists or how a complex algorithm works.
+
+Do not add comments that merely repeat the code.
+
+## Type Hints
+
+Use type hints for:
+
+- Parameters
+- Return values
+
+Prefer modern Python typing.
+
+## Python Practices
+
+- Use pathlib instead of os.path when appropriate.
+- Use dataclasses for simple data containers.
+- Use f-strings for formatting.
+- Use context managers (`with`) for managed resources.
+- Catch specific exceptions.
+- Avoid bare `except:`.
+- Avoid mutable default arguments.
+
+## Imports
+
+- Keep imports at the beginning of the file.
+- Group imports logically.
+- Avoid wildcard imports.
+
+## Command-Line Interface
+
+- Always use Python's standard `argparse` module to implement command-line parameters.
+- Command-line help (`-h` / `--help`) must provide a clear description of the program and all available parameters.
