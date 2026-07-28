@@ -2,7 +2,7 @@
 
 **Project:** Job-Hunter
 
-**Version:** 1.2
+**Version:** 1.4
 
 ---
 
@@ -23,7 +23,9 @@ The project uses AI agents and tools to search multiple sources for job postings
 * Internet search engines
 * Future search sources
 
-The discovered postings are analyzed and ranked according to how well they match the candidate's resume and search criteria.
+The discovered postings are analyzed and ranked according to how well they match the candidate's profile.
+
+Job search criteria are not manually maintained. An AI agent analyzes the user's resume information and related input files to generate a structured **job search profile**, which is cached and consumed by the JobHunter Agent for discovery, filtering, and ranking.
 
 For version 1, Internet search shall use **Serper** as the Google search provider. The search provider must be implemented behind an abstraction so it can be replaced later by another API, MCP service, or provider.
 
@@ -147,56 +149,65 @@ rather than the posting URL alone.
 
 ## 3.5 Input
 
-### resume
+### search_profile
 
-Path to the resume in Markdown format.
+Configuration for generating the AI-derived job search profile.
 
-Used by Job-Hunter for ranking and analysis. This is independent of the resume files used internally by the resume customization script (see Section 3.6).
+The configuration defines:
 
-### resume_analysis
-
-Path to a JSON file containing the structured analysis of the resume.
-
-A production sample is available at `test/master_resume_analysis_cache.json`. This file contains personal data and shall be excluded from version control. Tests shall use an anonymized copy.
-
-The JSON schema is documented in `design.md` (Section 18).
-
-### jobs
-
-List of desired job types.
-
-Each job definition contains:
-
-* `title`
-* `description`
-
-The title is only a guideline.
-
-Equivalent or similar job titles shall be recognized primarily through LLM-based interpretation.
-
-The description exists to clarify ambiguous titles.
-
-Example titles:
-
-* Software Development Manager
-* Software Team Lead
-* Software Engineering Manager
-* Software Quality Assurance Manager
-
-### title_aliases (optional)
-
-Optional list of user-defined title aliases or exclusions for recurring cases.
-
-The system shall not depend on this list; LLM-based interpretation remains the primary mechanism.
+* `input_files` — list of file paths sent to the AI agent/LLM when generating the profile
+* `output_file` — path and filename of the generated cache file
 
 Example:
 
 ```yaml
-title_aliases:
-  - "Software Development Manager"
-  - "Engineering Manager"
-  - "Software Team Lead"
+search_profile:
+  input_files:
+    - "C:/path/to/resume.md"
+    - "C:/path/to/master_resume_analysis_cache.json"
+    - "C:/path/to/LinkedIn_profile.md"              # optional
+    - "C:/path/to/additional_profile_information.yaml"  # optional
+  output_file: "C:/path/to/job_search_profile.yaml"
 ```
+
+Typical input files:
+
+| File | Required | Purpose |
+|------|----------|---------|
+| Resume (Markdown) | Yes | Primary resume content |
+| Resume analysis (JSON) | Yes | Structured resume analysis (see `design.md` Section 19) |
+| LinkedIn profile (Markdown) | No | Supplementary professional profile |
+| Additional profile information (YAML) | No | Manual preferences (e.g. excluded companies, additional locations) |
+
+A production resume sample is available at `test/master_resume.md`. This file contains personal data and shall be excluded from version control. Tests shall use an anonymized copy, similar to `test/master_resume_analysis_cache.json`.
+
+The exact schema for `additional_profile_information.yaml` may be defined later.
+
+### job_search_profile (generated cache)
+
+The generated cache file is named **`job_search_profile.yaml`** (path configured via `search_profile.output_file`).
+
+This file is produced by an AI agent/LLM and contains structured search criteria derived from the configured input files. The JobHunter Agent consumes this profile instead of a manually maintained list of job titles.
+
+The cache should contain information useful for job searching, such as:
+
+* Target job titles
+* Equivalent job titles
+* Job descriptions and responsibilities
+* Skills and technologies
+* Seniority level
+* Preferred industries (if applicable)
+* Excluded job types or titles (if applicable)
+* Any other information useful for finding matching jobs
+
+The field schema is documented in `design.md` (Section 18).
+
+#### Cache behavior
+
+* During a **full run**, the system shall generate the job search profile **only when the cache file does not exist**. If the cache exists, it is loaded as-is (including any manual edits).
+* The `--generate-job-search-profile` flag (see Section 4) **always regenerates** the profile, overwriting any existing cache file.
+* Alternatively, the user may delete the cache file manually to force regeneration on the next full run.
+* The system shall **not** automatically regenerate the profile based on file timestamps or content changes in v1.
 
 ### locations
 
@@ -255,7 +266,7 @@ Examples:
 
 ### models
 
-OpenAI model identifiers for agent orchestration, ranking, and other AI-assisted operations.
+OpenAI model identifiers for agent orchestration, job search profile generation, ranking, and other AI-assisted operations.
 
 Model selection shall be configurable and not hardcoded. The initial implementation shall use cost-effective models for most operations and allow more capable models for complex ranking or ambiguous cases.
 
@@ -320,6 +331,26 @@ Produces detailed execution information.
 
 When `--test` is present, verbose is **automatically and unconditionally enabled** as well. This coupling is hardcoded and cannot be disabled via CLI.
 
+## generate_job_search_profile
+
+Enabled via the `--generate-job-search-profile` command-line flag. Not enabled by default.
+
+Runs **only** the job search profile generation step and then exits. No web search, download, extraction, ranking, history update, or resume customization is performed.
+
+Purpose:
+
+* Generate or regenerate `job_search_profile.yaml` for user review before a full run.
+* Allow the user to revise the generated profile manually before searching for jobs.
+
+Behavior:
+
+* Loads configuration.
+* Regenerates the job search profile via the AI agent, **overwriting** any existing cache file.
+* Writes the result to `search_profile.output_file`.
+* Exits.
+
+The user may edit the generated file before launching a full run. During a full run, the existing cache is loaded without regeneration (unless the cache file is missing).
+
 ---
 
 # 5. High-Level Architecture
@@ -327,11 +358,12 @@ When `--test` is present, verbose is **automatically and unconditionally enabled
 ```text
                 JobHunter Agent
                       │
-      ┌───────────────┼────────────────┐
-      │               │                │
- Search Tool     Company Tool     Job Board Tool
-      │               │                │
-      └───────────────┼────────────────┘
+         ┌────────────┴────────────┐
+         │                         │
+  Job Search Profile        Search Tools
+    (cached YAML)          (company / board / Serper)
+         │                         │
+         └────────────┬────────────┘
                       │
              Job Description
                       │
@@ -341,6 +373,8 @@ When `--test` is present, verbose is **automatically and unconditionally enabled
                       │
                Resume Rework
 ```
+
+Before the main workflow, a separate profile-generation capability may run to produce or load the cached job search profile (see Section 3.5).
 
 ## Architecture Philosophy
 
@@ -354,37 +388,48 @@ When `--test` is present, verbose is **automatically and unconditionally enabled
 
 # 6. Workflow
 
+## 6.1 Full Run
+
 1. The JobHunter Agent starts execution.
-2. Command-line options are processed.
+2. Command-line options are processed. If `--generate-job-search-profile` is present, follow Section 6.2 instead.
 3. The YAML configuration file is loaded.
-4. Search tools discover job posting URLs from:
+4. The job search profile is loaded from cache, or generated if the cache file does not exist (see Section 3.5).
+5. Search tools discover job posting URLs using criteria from the job search profile:
 
    * Company websites
    * Job boards
    * Internet search engines (via Serper)
-5. Duplicate postings are removed using the posting history. When a duplicate is found, **date last seen** is updated and further processing for that posting is skipped.
-6. Each remaining posting is downloaded (HTTP preferred; Playwright fallback for dynamic pages).
-7. Relevant information is extracted, including:
+6. Duplicate postings are removed using the posting history. When a duplicate is found, **date last seen** is updated and further processing for that posting is skipped.
+7. Each remaining posting is downloaded (HTTP preferred; Playwright fallback for dynamic pages).
+8. Relevant information is extracted, including:
 
    * Company
    * Job title
    * Description
    * Location
    * Address (when available)
-8. Deterministic filtering is applied before ranking:
+9. Deterministic filtering is applied before ranking:
 
    * Location filtering
    * Duplicate detection
-   * Basic configuration rules
-9. Each remaining posting is ranked against the candidate profile. The LLM performs semantic evaluation (resume/job fit, equivalent experience, similar responsibilities, terminology, job title interpretation) and produces a confidence score between **0.00** and **1.00**.
-10. Each posting is written as a Markdown document:
+   * Excluded companies or job types (from job search profile or additional profile information)
+10. Each remaining posting is ranked against the candidate profile using the job search profile and input resume sources. The LLM performs semantic evaluation (resume/job fit, equivalent experience, similar responsibilities, terminology, job title interpretation) and produces a confidence score between **0.00** and **1.00**.
+11. Each posting is written as a Markdown document:
 
 ```text
 <posting_output>/<company_name>/<job_title>.md
 ```
 
-11. The posting history is updated.
-12. If the confidence score is greater than or equal to **confidence_resume**, the resume customization script is invoked (fire-and-forget).
+12. The posting history is updated.
+13. If the confidence score is greater than or equal to **confidence_resume**, the resume customization script is invoked (fire-and-forget).
+
+## 6.2 Profile-Only Run (`--generate-job-search-profile`)
+
+1. Command-line options are processed.
+2. The YAML configuration file is loaded.
+3. The job search profile is **regenerated** via the AI agent (existing cache is overwritten).
+4. The result is written to `search_profile.output_file`.
+5. Execution stops. No further steps are performed.
 
 ## 6.9 Filename Collision Resolution
 
