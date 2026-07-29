@@ -1,6 +1,9 @@
 # Environment and secrets
 .env
 
+# Production configuration (machine-specific paths)
+config/config.yaml
+
 # Production-local test assets (personal data)
 test/master_resume.md
 test/master_resume_analysis_cache.json

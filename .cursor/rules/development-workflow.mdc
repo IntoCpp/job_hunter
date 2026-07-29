@@ -48,6 +48,6 @@ When modifying existing code:
 
 1. **Read and understand:** `requirements.md`, `design.md`, applicable project rules.
 2. **Ask clarification questions before coding if:** requirements are ambiguous; design decisions are missing; multiple valid approaches could significantly affect the architecture.
-3. **Before making significant changes:** explain the proposed approach; identify affected files; confirm consistency with requirements and design.
+3. **Before making significant architectural changes** or deviating from design.md, explain the proposed approach and request approval.
 4. **Implement** the requested functionality.
 5. **Verify:** run relevant tests; check consistency with requirements and design; provide an implementation report.

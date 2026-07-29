@@ -778,18 +778,20 @@ locations:
 # ── Search sources ───────────────────────────────────────────────
 web_sites:
   companies:
-    - url: "https://jobsearch.alstom.com/"
-    - url: "https://www.desjardins.com/qc/fr/carriere.html"
-    - url: "https://www.adacel.com/careers"
-    - url: "https://emploi.hydroquebec.com/"
+    # Full URL — career site root or filtered sub-page
+    - url: "https://emploi.hydroquebec.com/go/Technologies-information-et-communications/2661617/"
   job_boards:
     - name: "LinkedIn"
+      domain: "linkedin.com"
     - name: "Indeed"
+      domain: "ca.indeed.com"
     - name: "Workday"
+      domain: "myworkdayjobs.com"
     - name: "Greenhouse"
-    - name: "BambooHR"
-    - name: "Eightfold"
-    - name: "UltiPro"
+      domain: "greenhouse.io"
+    # Optional url: fetch a specific listing page directly in addition to site: search
+    # - name: "Custom board"
+    #   url: "https://example.com/jobs/engineering"
 
 # ── Search provider ──────────────────────────────────────────────
 search:

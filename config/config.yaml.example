@@ -1,14 +1,14 @@
-# Job-Hunter test/development configuration
-# Uses anonymized fixtures from tests/test_data/
+# Job-Hunter production configuration template
+# Copy to config/config.yaml and adjust paths for your environment.
 
-posting_output: ".test/output/"
-posting_history: ".test/output/posting_history.yaml"
+posting_output: "C:/Users/ERIC/Documents/job_hunter_finds/"
+posting_history: "C:/Users/ERIC/Documents/job_hunter_finds/posting_history.yaml"
 
 search_profile:
   input_files:
-    - "tests/test_data/sample_resume.md"
-    - "tests/test_data/sample_resume_analysis.json"
-  output_file: ".test/output/job_search_profile.yaml"
+    - "C:/path/to/master_resume.md"
+    - "C:/path/to/master_resume_analysis_cache.json"
+  output_file: "C:/path/to/job_search_profile.yaml"
 
 resume_rework:
   script_path: "C:/Users/ERIC/Documents/Code/job-hunter-resume-rework/resume_rework.py"
@@ -31,7 +31,8 @@ locations:
 
 web_sites:
   companies:
-    - url: "https://jobsearch.alstom.com/"
+    # Full URL — site root or a filtered sub-page (e.g. IT jobs only)
+    - url: "https://emploi.hydroquebec.com/go/Technologies-information-et-communications/2661617/"
   job_boards:
     - name: "LinkedIn"
       domain: "linkedin.com"

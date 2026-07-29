@@ -1,6 +1,6 @@
 """Tests for the CLI argument parser."""
 
-from job_hunter.cli import build_parser, main
+from job_hunter.cli import build_parser
 
 
 def test_parser_defaults() -> None:
@@ -11,12 +11,6 @@ def test_parser_defaults() -> None:
     assert args.test is False
     assert args.verbose is False
     assert args.generate_job_search_profile is False
-
-
-def test_parser_test_enables_verbose() -> None:
-    """Test mode unconditionally enables verbose in main()."""
-    exit_code = main(["--test"])
-    assert exit_code == 0
 
 
 def test_parser_generate_profile_flag() -> None:

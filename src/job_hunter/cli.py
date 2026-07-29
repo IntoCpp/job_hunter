@@ -3,7 +3,15 @@
 from __future__ import annotations
 
 import argparse
+import logging
 import sys
+from pathlib import Path
+
+from job_hunter.agent.orchestrator import JobHunterAgent
+from job_hunter.services.configuration_service import load_config, load_environment
+from job_hunter.utils.logging_config import default_log_file, setup_logging
+
+logger = logging.getLogger(__name__)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -57,9 +65,21 @@ def main(argv: list[str] | None = None) -> int:
     if args.test:
         args.verbose = True
 
-    # Phase 3 will implement orchestration; setup validates CLI wiring only.
-    parser.print_help()
-    return 0
+    try:
+        load_environment()
+        config = load_config(Path(args.config))
+        setup_logging(verbose=args.verbose, log_file=default_log_file(config.posting_output))
+        agent = JobHunterAgent.from_config(config)
+
+        if args.generate_job_search_profile:
+            agent.generate_profile_only()
+            return 0
+
+        agent.run(test_mode=args.test)
+        return 0
+    except Exception:
+        logger.exception("Job-Hunter execution failed")
+        return 1
 
 
 if __name__ == "__main__":
