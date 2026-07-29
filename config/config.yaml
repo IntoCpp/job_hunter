@@ -1,0 +1,37 @@
+# Job-Hunter production configuration
+# Copy and adjust paths for your environment.
+
+posting_output: "C:/Users/ERIC/Documents/job_hunter_finds/"
+posting_history: "C:/Users/ERIC/Documents/job_hunter_finds/posting_history.yaml"
+
+search_profile:
+  input_files:
+    - "C:/path/to/master_resume.md"
+    - "C:/path/to/master_resume_analysis_cache.json"
+  output_file: "C:/path/to/job_search_profile.yaml"
+
+resume_rework:
+  script_path: "C:/Users/ERIC/Documents/Code/job-hunter-resume-rework/resume_rework.py"
+  working_directory: "C:/Users/ERIC/Documents/Code/job-hunter-resume-rework"
+
+confidence_resume: 0.90
+
+models:
+  agent: "gpt-4o-mini"
+  profile: "gpt-4o-mini"
+  ranking: "gpt-4o"
+  location: "gpt-4o-mini"
+  extraction: "gpt-4o-mini"
+
+locations:
+  - name: "Montreal Greater Area"
+    description: "Montreal and surrounding areas accessible by public transport or reasonable commute"
+
+web_sites:
+  companies:
+    - url: "https://emploi.hydroquebec.com/"
+  job_boards:
+    - name: "LinkedIn"
+
+search:
+  provider: serper
