@@ -131,6 +131,7 @@ class HistoryService:
             date_last_seen=today,
             ranking_score=posting.confidence_score,
             markdown_path=markdown_path,
+            metadata={"language": posting.language} if posting.language else {},
         )
         self._entries.append(entry)
         self._index[entry.duplicate_key()] = entry

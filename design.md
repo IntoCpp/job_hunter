@@ -2,7 +2,7 @@
 
 **Project:** Job-Hunter
 
-**Version:** 0.6
+**Version:** 0.7
 
 ---
 
@@ -272,7 +272,7 @@ Input: files listed in `search_profile.input_files` (resume, resume analysis, op
 
 Output: `job_search_profile.yaml` written to `search_profile.output_file`.
 
-Uses an LLM to analyze the input files and produce structured search criteria (target titles, equivalent titles, skills, seniority, exclusions, etc.).
+Uses an LLM to analyze the input files and produce structured search criteria (target titles, equivalent titles, skills, seniority, exclusions, etc.). The generation prompt requests bilingual English/French titles and keywords where appropriate for the candidate's job market.
 
 ### Cache behavior
 
@@ -359,6 +359,24 @@ Expected information:
 * Location
 * Address
 * Description
+* Language (primary language of the posting: `en` or `fr`)
+
+The LLM prompt instructs the model to detect the posting language and preserve all extracted text in the original language without translation.
+
+## 8.5.1 Language Support
+
+Job postings may be in English or French. Language handling applies across the pipeline:
+
+| Stage | Behavior |
+|-------|----------|
+| Extraction | Detect language (`en`/`fr`); preserve original-language text fields |
+| Profile generation | Include bilingual titles and keywords for the search market |
+| Search | Build queries from bilingual profile criteria |
+| Location matching | Accept location text in English or French |
+| Ranking | Score fit across languages; interpret equivalent titles (e.g. *Directeur de développement logiciel* ≈ *Software Development Manager*) |
+| Saved Markdown | Store description and fields in original language; include language metadata |
+
+Supported language codes: `en`, `fr`. The `language` field is stored on `JobPosting` and recorded in posting history metadata when available.
 
 ## 8.6 Ranking Tool
 
@@ -383,6 +401,7 @@ Inputs:
 * Similar responsibilities
 * Company-specific terminology
 * Job title interpretation (using profile target and equivalent titles)
+* Cross-language equivalence (English and French postings evaluated against bilingual profile criteria)
 
 ### Output
 
@@ -433,6 +452,7 @@ A unit test shall verify invocation using a dummy job posting in the test folder
 * Markdown filename
 * Confidence score
 * Description
+* Language (ISO 639-1 code: `en` or `fr`)
 
 ## JobSearchProfile
 

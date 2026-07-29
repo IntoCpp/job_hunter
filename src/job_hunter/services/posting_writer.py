@@ -36,6 +36,8 @@ def _format_markdown(posting: JobPosting) -> str:
     ]
     if posting.address:
         lines.append(f"- **Address:** {posting.address}")
+    if posting.language:
+        lines.append(f"- **Language:** {posting.language}")
     lines.append(f"- **URL:** {posting.url}")
     if posting.confidence_score is not None:
         lines.append(f"- **Confidence:** {posting.confidence_score:.2f}")

@@ -14,11 +14,15 @@ logger = logging.getLogger(__name__)
 
 _LOCATION_SYSTEM_PROMPT = (
     "Decide if a job posting location matches any acceptable configured locations. "
+    "Location text may be in English or French. "
     "Return JSON with keys: acceptable (boolean), reason (string)."
 )
 
 _RANKING_SYSTEM_PROMPT = (
     "Score how well a job posting matches the candidate profile on a 0.00 to 1.00 scale. "
+    "The posting may be in English or French; evaluate fit regardless of language. "
+    "Interpret equivalent job titles and responsibilities across languages "
+    "(for example, 'Directeur de développement logiciel' and 'Software Development Manager'). "
     "Return JSON with keys: confidence (number), reason (string)."
 )
 
@@ -70,6 +74,7 @@ class RankingTool:
             f"Skills: {', '.join(profile.skills)}"
         )
         posting_summary = (
+            f"Language: {posting.language or 'unknown'}\n"
             f"Title: {posting.title}\n"
             f"Company: {posting.company}\n"
             f"Location: {posting.location}\n"

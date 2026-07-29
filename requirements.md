@@ -2,7 +2,7 @@
 
 **Project:** Job-Hunter
 
-**Version:** 1.4
+**Version:** 1.5
 
 ---
 
@@ -453,7 +453,45 @@ Software_Development_Manager_ab.md
 
 ---
 
-# 7. Implementation Constraints
+# 7. Language Support
+
+The system shall support job postings in **English** and **French**.
+
+## 7.1 Supported Languages
+
+* **English** (`en`)
+* **French** (`fr`)
+
+## 7.2 Extraction
+
+When extracting structured information from a job posting, the system shall:
+
+* Detect the primary language of the posting.
+* Preserve all extracted text fields (company, title, location, address, description) in the **original language** of the posting.
+* **Not** translate posting content during extraction.
+
+## 7.3 Job Search Profile Generation
+
+When generating the job search profile, the system shall include search criteria suitable for a bilingual job market. Target titles, equivalent titles, and search keywords shall include **both English and French** terms where appropriate (for example, *Software Development Manager* and *Directeur de développement logiciel*).
+
+## 7.4 Search
+
+Search queries shall be built from profile criteria that include bilingual titles and keywords so that postings in either language can be discovered.
+
+## 7.5 Ranking and Location Matching
+
+AI-assisted ranking and location matching shall evaluate postings correctly regardless of whether the posting is in English or French. Equivalent job titles and responsibilities shall be interpreted across languages.
+
+## 7.6 Saved Postings
+
+Downloaded job postings saved as Markdown shall:
+
+* Preserve the original language of the job description and other extracted fields.
+* Record the detected language as metadata in the saved file.
+
+---
+
+# 8. Implementation Constraints
 
 The initial implementation shall use:
 

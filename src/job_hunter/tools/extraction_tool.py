@@ -5,14 +5,17 @@ from __future__ import annotations
 import logging
 
 from job_hunter.models.config import AppConfig
-from job_hunter.models.job_posting import JobPosting
+from job_hunter.models.job_posting import JobPosting, normalize_language
 from job_hunter.services.llm_service import LLMService
 
 logger = logging.getLogger(__name__)
 
 _EXTRACTION_SYSTEM_PROMPT = (
     "Extract structured job posting fields from HTML or text. "
-    "Return JSON with keys: company, title, location, address, description."
+    "Postings may be in English or French. Detect the primary language of the posting "
+    "(use ISO 639-1 codes: en or fr). Preserve all extracted text fields in the original "
+    "language of the posting; do not translate. "
+    "Return JSON with keys: company, title, location, address, description, language."
 )
 
 
@@ -52,6 +55,7 @@ class ExtractionTool:
             location=str(data.get("location", "Unknown Location")),
             address=str(data.get("address", "")),
             description=str(data.get("description", "")),
+            language=normalize_language(str(data.get("language", ""))),
             url=url,
             raw_content=content,
         )
