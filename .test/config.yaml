@@ -9,6 +9,8 @@ search_profile:
     - "tests/test_data/sample_resume.md"
     - "tests/test_data/sample_resume_analysis.json"
   output_file: ".test/output/job_search_profile.yaml"
+  job_search_preferences:
+    file: "../tests/test_data/sample_job_preferences.yaml"
 
 resume_rework:
   script_path: "C:/Users/ERIC/Documents/Code/job-hunter-resume-rework/resume_rework.py"

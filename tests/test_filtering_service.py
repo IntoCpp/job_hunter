@@ -1,6 +1,7 @@
 """Tests for deterministic filtering."""
 
 from job_hunter.models.job_posting import JobPosting
+from job_hunter.models.job_search_preferences import JobSearchPreferences, RolePreference
 from job_hunter.models.job_search_profile import JobSearchProfile
 from job_hunter.services.filtering_service import is_excluded_posting
 
@@ -12,8 +13,15 @@ def test_excluded_company_is_rejected() -> None:
     assert is_excluded_posting(posting, profile)
 
 
+def test_excluded_title_from_preferences_is_rejected() -> None:
+    """User excluded roles are filtered before ranking."""
+    posting = JobPosting(title="Senior Software Developer", company="Good Corp", location="Montreal", url="https://x")
+    preferences = JobSearchPreferences(excluded_roles=[RolePreference(title="Senior Software Developer")])
+    assert is_excluded_posting(posting, JobSearchProfile(), preferences)
+
+
 def test_excluded_title_is_rejected() -> None:
-    """Excluded titles are filtered before ranking."""
+    """Excluded titles from AI profile are filtered before ranking."""
     posting = JobPosting(title="Junior Intern", company="Good Corp", location="Montreal", url="https://x")
     profile = JobSearchProfile(excluded_titles=["Intern"])
     assert is_excluded_posting(posting, profile)

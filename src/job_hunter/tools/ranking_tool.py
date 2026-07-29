@@ -6,9 +6,11 @@ import logging
 
 from job_hunter.models.config import AppConfig
 from job_hunter.models.job_posting import JobPosting
+from job_hunter.models.job_search_preferences import JobSearchPreferences
 from job_hunter.models.job_search_profile import JobSearchProfile
 from job_hunter.services.filtering_service import build_location_context, is_excluded_posting
 from job_hunter.services.llm_service import LLMService
+from job_hunter.services.preferences_service import format_preferences_for_prompt
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +25,9 @@ _RANKING_SYSTEM_PROMPT = (
     "The posting may be in English or French; evaluate fit regardless of language. "
     "Interpret equivalent job titles and responsibilities across languages "
     "(for example, 'Directeur de développement logiciel' and 'Software Development Manager'). "
+    "User job search preferences indicate what the candidate wants to prioritize, accept, or avoid. "
+    "Increase the score for preferred roles, keep acceptable roles competitive, and lower the score "
+    "for roles that conflict with user preferences or excluded roles. "
     "Return JSON with keys: confidence (number), reason (string)."
 )
 
@@ -40,29 +45,42 @@ class RankingTool:
         self._config = config
         self._llm = llm_service
 
-    def should_process(self, posting: JobPosting, profile: JobSearchProfile) -> tuple[bool, str]:
+    def should_process(
+        self,
+        posting: JobPosting,
+        profile: JobSearchProfile,
+        preferences: JobSearchPreferences,
+    ) -> tuple[bool, str]:
         """Apply deterministic filters before LLM ranking.
 
         Parameters:
             posting: Extracted posting.
             profile: Job search profile.
+            preferences: User-maintained job search preferences.
 
         Returns:
             Tuple of (should_continue, rejection_reason).
         """
-        if is_excluded_posting(posting, profile):
-            return False, "Excluded by profile rules"
+        if is_excluded_posting(posting, profile, preferences):
+            return False, "Excluded by profile or user preference rules"
         if not self._location_is_acceptable(posting):
             return False, "Location outside acceptable areas"
         return True, ""
 
-    def rank(self, posting: JobPosting, profile: JobSearchProfile, resume_context: str) -> float:
+    def rank(
+        self,
+        posting: JobPosting,
+        profile: JobSearchProfile,
+        resume_context: str,
+        preferences: JobSearchPreferences,
+    ) -> float:
         """Compute semantic confidence score for a posting.
 
         Parameters:
             posting: Extracted posting.
             profile: Job search profile.
             resume_context: Combined resume input file contents.
+            preferences: User-maintained job search preferences.
 
         Returns:
             Confidence score between 0.00 and 1.00.
@@ -73,6 +91,7 @@ class RankingTool:
             f"Equivalent titles: {', '.join(profile.equivalent_titles)}\n"
             f"Skills: {', '.join(profile.skills)}"
         )
+        preferences_summary = format_preferences_for_prompt(preferences)
         posting_summary = (
             f"Language: {posting.language or 'unknown'}\n"
             f"Title: {posting.title}\n"
@@ -83,7 +102,12 @@ class RankingTool:
         data = self._llm.complete_json(
             model=self._config.models.ranking,
             system_prompt=_RANKING_SYSTEM_PROMPT,
-            user_prompt=f"PROFILE:\n{profile_summary}\n\nRESUME:\n{resume_context[:6000]}\n\nPOSTING:\n{posting_summary}",
+            user_prompt=(
+                f"AI PROFILE:\n{profile_summary}\n\n"
+                f"USER PREFERENCES:\n{preferences_summary}\n\n"
+                f"RESUME:\n{resume_context[:6000]}\n\n"
+                f"POSTING:\n{posting_summary}"
+            ),
         )
         confidence = float(data.get("confidence", 0.0))
         confidence = max(0.0, min(1.0, confidence))

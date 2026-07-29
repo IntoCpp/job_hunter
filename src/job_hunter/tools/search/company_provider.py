@@ -48,16 +48,23 @@ class CompanyWebsiteSearchProvider(SearchProvider):
         del queries
         return []
 
-    def discover_for_profile(self, profile: JobSearchProfile, location_terms: list[str]) -> list[SearchResult]:
+    def discover_for_profile(
+        self,
+        profile: JobSearchProfile,
+        location_terms: list[str],
+        search_titles: list[str] | None = None,
+    ) -> list[SearchResult]:
         """Discover job links from company sites and Serper site queries.
 
         Parameters:
             profile: Job search profile.
             location_terms: Location names for Serper queries.
+            search_titles: Optional combined titles from profile and user preferences.
 
         Returns:
             Discovered company-site search results.
         """
+        titles = search_titles if search_titles is not None else profile.all_titles()
         results: list[SearchResult] = []
         seen: set[str] = set()
         location_suffix = " ".join(location_terms[:2])
@@ -73,7 +80,7 @@ class CompanyWebsiteSearchProvider(SearchProvider):
                     seen.add(link)
                     results.append(SearchResult(url=link, source=f"company:{domain}"))
 
-            for title in profile.all_titles()[:3]:
+            for title in titles[:3]:
                 query = f"site:{domain} \"{title}\" {location_suffix}".strip()
                 for item in self._serper.discover([query]):
                     if item.url not in seen:

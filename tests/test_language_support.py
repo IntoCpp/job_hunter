@@ -3,7 +3,15 @@
 from pathlib import Path
 from unittest.mock import MagicMock
 
-from job_hunter.models.config import AppConfig, ModelConfig, ResumeReworkConfig, SearchConfig, SearchProfileConfig, WebSitesConfig
+from job_hunter.models.config import (
+    AppConfig,
+    JobSearchPreferencesConfig,
+    ModelConfig,
+    ResumeReworkConfig,
+    SearchConfig,
+    SearchProfileConfig,
+    WebSitesConfig,
+)
 from job_hunter.models.job_posting import JobPosting, normalize_language
 from job_hunter.services.history_service import HistoryService
 from job_hunter.services.posting_writer import save_posting_markdown
@@ -24,7 +32,11 @@ def test_extraction_tool_preserves_language(tmp_path: Path) -> None:
     config = AppConfig(
         posting_output=tmp_path,
         posting_history=tmp_path / "history.yaml",
-        search_profile=SearchProfileConfig(input_files=[], output_file=tmp_path / "profile.yaml"),
+        search_profile=SearchProfileConfig(
+            input_files=[],
+            output_file=tmp_path / "profile.yaml",
+            job_search_preferences=JobSearchPreferencesConfig(file=tmp_path / "preferences.yaml"),
+        ),
         resume_rework=ResumeReworkConfig(script_path=tmp_path / "script.py", working_directory=tmp_path),
         confidence_resume=0.9,
         models=ModelConfig("a", "b", "c", "d", "e"),

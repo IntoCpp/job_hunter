@@ -9,11 +9,19 @@ from job_hunter.utils.url import extract_domain
 
 
 @dataclass
+class JobSearchPreferencesConfig:
+    """Path to the user-maintained job search preferences file."""
+
+    file: Path
+
+
+@dataclass
 class SearchProfileConfig:
     """Inputs and output path for job search profile generation."""
 
     input_files: list[Path]
     output_file: Path
+    job_search_preferences: JobSearchPreferencesConfig
 
 
 @dataclass

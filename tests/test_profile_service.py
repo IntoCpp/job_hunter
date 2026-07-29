@@ -7,6 +7,7 @@ import yaml
 
 from job_hunter.models.config import (
     AppConfig,
+    JobSearchPreferencesConfig,
     ModelConfig,
     ResumeReworkConfig,
     SearchConfig,
@@ -24,7 +25,11 @@ def _config(tmp_path: Path) -> AppConfig:
     return AppConfig(
         posting_output=tmp_path / "output",
         posting_history=tmp_path / "history.yaml",
-        search_profile=SearchProfileConfig(input_files=[input_file], output_file=output_file),
+        search_profile=SearchProfileConfig(
+            input_files=[input_file],
+            output_file=output_file,
+            job_search_preferences=JobSearchPreferencesConfig(file=tmp_path / "preferences.yaml"),
+        ),
         resume_rework=ResumeReworkConfig(script_path=tmp_path / "script.py", working_directory=tmp_path),
         confidence_resume=0.9,
         models=ModelConfig("a", "b", "c", "d", "e"),

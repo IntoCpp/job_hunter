@@ -47,16 +47,23 @@ class JobBoardSearchProvider(SearchProvider):
         del queries
         return []
 
-    def discover_for_profile(self, profile: JobSearchProfile, location_terms: list[str]) -> list[SearchResult]:
+    def discover_for_profile(
+        self,
+        profile: JobSearchProfile,
+        location_terms: list[str],
+        search_titles: list[str] | None = None,
+    ) -> list[SearchResult]:
         """Build and run site-restricted queries from profile titles and locations.
 
         Parameters:
             profile: Job search profile.
             location_terms: Location names to include in queries.
+            search_titles: Optional combined titles from profile and user preferences.
 
         Returns:
             Discovered job board search results.
         """
+        titles = search_titles if search_titles is not None else profile.all_titles()
         results: list[SearchResult] = []
         seen: set[str] = set()
         location_suffix = " ".join(location_terms[:2])
@@ -77,7 +84,7 @@ class JobBoardSearchProvider(SearchProvider):
                 else:
                     logger.warning("Failed to fetch job board page %s", board.url)
 
-            for title in profile.all_titles()[:5]:
+            for title in titles[:5]:
                 query = f'site:{domain} "{title}" {location_suffix}'.strip()
                 for item in self._serper.discover([query]):
                     if item.url not in seen:

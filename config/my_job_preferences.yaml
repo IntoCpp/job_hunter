@@ -1,0 +1,24 @@
+preferred_roles:
+  - title: "Software Development Manager"
+    priority: 1
+    description: "Management role leading software development teams."
+
+  - title: "Software Quality Assurance Manager"
+    priority: 2
+    description: "Management role leading software quality and QA processes."
+
+acceptable_roles:
+  - title: "Software Team Lead"
+    description: "Technical leadership role with software development responsibilities."
+
+acceptable_roles:
+  - title: "Senior C++ Software Developer"
+    description: "Individual contributor role without management responsibilities."
+
+excluded_roles:
+  - title: "Senior Software Developer"
+    description: "Individual contributor role without management responsibilities."
+
+excluded_roles:
+  - title: "Software QA Tester"
+    description: "Individual running manual tests, without coding responsibilities."

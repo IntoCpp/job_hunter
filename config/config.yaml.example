@@ -9,6 +9,8 @@ search_profile:
     - "C:/path/to/master_resume.md"
     - "C:/path/to/master_resume_analysis_cache.json"
   output_file: "C:/path/to/job_search_profile.yaml"
+  job_search_preferences:
+    file: "./config/my_job_preferences.yaml"
 
 resume_rework:
   script_path: "C:/Users/ERIC/Documents/Code/job-hunter-resume-rework/resume_rework.py"

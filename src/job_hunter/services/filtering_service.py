@@ -4,15 +4,21 @@ from __future__ import annotations
 
 from job_hunter.models.config import LocationConfig
 from job_hunter.models.job_posting import JobPosting
+from job_hunter.models.job_search_preferences import JobSearchPreferences
 from job_hunter.models.job_search_profile import JobSearchProfile
 
 
-def is_excluded_posting(posting: JobPosting, profile: JobSearchProfile) -> bool:
+def is_excluded_posting(
+    posting: JobPosting,
+    profile: JobSearchProfile,
+    preferences: JobSearchPreferences | None = None,
+) -> bool:
     """Check whether a posting matches excluded companies or titles.
 
     Parameters:
         posting: Extracted posting.
         profile: Job search profile with exclusions.
+        preferences: Optional user-maintained job search preferences.
 
     Returns:
         True when the posting should be rejected before LLM ranking.
@@ -25,6 +31,10 @@ def is_excluded_posting(posting: JobPosting, profile: JobSearchProfile) -> bool:
     for excluded_title in profile.excluded_titles:
         if excluded_title.casefold() in title:
             return True
+    if preferences is not None:
+        for excluded_title in preferences.excluded_titles():
+            if excluded_title.casefold() in title:
+                return True
     return False
 
 

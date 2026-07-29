@@ -10,6 +10,7 @@ from job_hunter.services.configuration_service import get_required_env
 from job_hunter.services.history_service import HistoryService
 from job_hunter.services.llm_service import LLMService
 from job_hunter.services.posting_writer import save_posting_markdown
+from job_hunter.services.preferences_service import load_job_search_preferences
 from job_hunter.services.profile_service import ProfileService, read_input_files
 from job_hunter.tools.download_tool import DownloadTool
 from job_hunter.tools.extraction_tool import ExtractionTool
@@ -99,9 +100,11 @@ class JobHunterAgent:
         logger.info("Loading configuration...")
         profile = self._profile_service.load_or_generate()
         logger.info("Loading job search profile...")
+        preferences = load_job_search_preferences(self._config.search_profile.job_search_preferences.file)
+        logger.info("Loading job search preferences...")
         resume_context = read_input_files(self._config.search_profile.input_files)
 
-        urls = self._search.discover_urls(profile)
+        urls = self._search.discover_urls(profile, preferences)
         processed = 0
         posting_limit = 2 if test_mode else None
 
@@ -109,7 +112,7 @@ class JobHunterAgent:
             if posting_limit is not None and processed >= posting_limit:
                 break
             try:
-                if self._process_url(url, profile, resume_context):
+                if self._process_url(url, profile, preferences, resume_context):
                     processed += 1
             except Exception:
                 logger.exception("Failed to process posting URL: %s", url)
@@ -117,7 +120,7 @@ class JobHunterAgent:
         self._history.save()
         logger.info("Completed. Processed %s new postings.", processed)
 
-    def _process_url(self, url: str, profile, resume_context: str) -> bool:
+    def _process_url(self, url: str, profile, preferences, resume_context: str) -> bool:
         logger.debug("Downloading %s", url)
         content = self._download.download(url)
         posting = self._extract.extract(url=url, content=content)
@@ -126,12 +129,12 @@ class JobHunterAgent:
             self._history.touch_duplicate(posting)
             return False
 
-        should_process, reason = self._rank.should_process(posting, profile)
+        should_process, reason = self._rank.should_process(posting, profile, preferences)
         if not should_process:
             logger.info("Skipping %s: %s", posting.title, reason)
             return False
 
-        posting.confidence_score = self._rank.rank(posting, profile, resume_context)
+        posting.confidence_score = self._rank.rank(posting, profile, resume_context, preferences)
         markdown_path = save_posting_markdown(posting, self._config.posting_output)
         posting.markdown_path = str(markdown_path)
         self._history.add_entry(posting, markdown_path=str(markdown_path))

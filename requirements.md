@@ -2,7 +2,7 @@
 
 **Project:** Job-Hunter
 
-**Version:** 1.5
+**Version:** 1.6
 
 ---
 
@@ -157,6 +157,7 @@ The configuration defines:
 
 * `input_files` — list of file paths sent to the AI agent/LLM when generating the profile
 * `output_file` — path and filename of the generated cache file
+* `job_search_preferences.file` — path to the user-maintained job search preferences file (`my_job_preferences.yaml`)
 
 Example:
 
@@ -166,8 +167,9 @@ search_profile:
     - "C:/path/to/resume.md"
     - "C:/path/to/master_resume_analysis_cache.json"
     - "C:/path/to/LinkedIn_profile.md"              # optional
-    - "C:/path/to/additional_profile_information.yaml"  # optional
   output_file: "C:/path/to/job_search_profile.yaml"
+  job_search_preferences:
+    file: "./config/my_job_preferences.yaml"
 ```
 
 Typical input files:
@@ -175,29 +177,29 @@ Typical input files:
 | File | Required | Purpose |
 |------|----------|---------|
 | Resume (Markdown) | Yes | Primary resume content |
-| Resume analysis (JSON) | Yes | Structured resume analysis (see `design.md` Section 19) |
+| Resume analysis (JSON) | Yes | Structured resume analysis (see `design.md` Section 21) |
 | LinkedIn profile (Markdown) | No | Supplementary professional profile |
-| Additional profile information (YAML) | No | Manual preferences (e.g. excluded companies, additional locations) |
 
 A production resume sample is available at `test/master_resume.md`. This file contains personal data and shall be excluded from version control. Tests shall use an anonymized copy, similar to `test/master_resume_analysis_cache.json`.
-
-The exact schema for `additional_profile_information.yaml` may be defined later.
 
 ### job_search_profile (generated cache)
 
 The generated cache file is named **`job_search_profile.yaml`** (path configured via `search_profile.output_file`).
 
-This file is produced by an AI agent/LLM and contains structured search criteria derived from the configured input files. The JobHunter Agent consumes this profile instead of a manually maintained list of job titles.
+This file is produced by an AI agent/LLM and contains structured search criteria derived from the configured input files. It describes what the system **infers from the resume** — not what the user explicitly wants to prioritize.
+
+The JobHunter Agent consumes this profile together with the user-maintained preferences file (see below).
 
 The cache should contain information useful for job searching, such as:
 
-* Target job titles
+* Probable target job titles
 * Equivalent job titles
 * Job descriptions and responsibilities
 * Skills and technologies
 * Seniority level
 * Preferred industries (if applicable)
-* Excluded job types or titles (if applicable)
+* Excluded job types or titles inferred from resume analysis (if applicable)
+* Career direction inferred from resume sources
 * Any other information useful for finding matching jobs
 
 The field schema is documented in `design.md` (Section 18).
@@ -208,6 +210,58 @@ The field schema is documented in `design.md` (Section 18).
 * The `--generate-job-search-profile` flag (see Section 4) **always regenerates** the profile, overwriting any existing cache file.
 * Alternatively, the user may delete the cache file manually to force regeneration on the next full run.
 * The system shall **not** automatically regenerate the profile based on file timestamps or content changes in v1.
+
+### my_job_preferences.yaml (user-maintained)
+
+The user-maintained preferences file path is configured via `search_profile.job_search_preferences.file`.
+
+Default example location: `config/my_job_preferences.yaml`
+
+This file contains **explicit user preferences** for job searching. It is separate from the AI-generated `job_search_profile.yaml` and shall not be overwritten by the system.
+
+The JobHunter Agent consumes both sources during discovery and ranking.
+
+#### AI-generated information (`job_search_profile.yaml`)
+
+* Probable job titles
+* Equivalent titles
+* Skills
+* Industries
+* Career direction inferred from resume sources
+
+#### User-provided job search preferences (`my_job_preferences.yaml`)
+
+* Preferred roles (with priority)
+* Acceptable roles
+* Excluded roles
+* Search constraints expressed by the user
+
+User preferences influence:
+
+* **Job discovery** — preferred and acceptable role titles are used to build search queries (together with AI profile criteria)
+* **Deterministic filtering** — excluded roles are rejected before ranking
+* **Ranking** — the LLM considers user preferences when calculating the final confidence score
+
+Example:
+
+```yaml
+preferred_roles:
+  - title: "Software Development Manager"
+    priority: 1
+    description: "Management role leading software development teams."
+
+acceptable_roles:
+  - title: "Software Team Lead"
+    description: "Technical leadership role with software development responsibilities."
+
+excluded_roles:
+  - title: "Senior Software Developer"
+    description: "Individual contributor role without management responsibilities."
+```
+
+The field schema is documented in `design.md` (Section 20).
+
+The configured preferences file must exist when the application starts.
 
 ### locations
 
@@ -361,7 +415,9 @@ The user may edit the generated file before launching a full run. During a full 
          ┌────────────┴────────────┐
          │                         │
   Job Search Profile        Search Tools
-    (cached YAML)          (company / board / Serper)
+  (AI cache YAML)          (company / board / Serper)
+  User Preferences                 │
+  (my_job_preferences.yaml)        │
          │                         │
          └────────────┬────────────┘
                       │
@@ -374,7 +430,7 @@ The user may edit the generated file before launching a full run. During a full 
                Resume Rework
 ```
 
-Before the main workflow, a separate profile-generation capability may run to produce or load the cached job search profile (see Section 3.5).
+Before the main workflow, a separate profile-generation capability may run to produce or load the cached job search profile (see Section 3.5). User job search preferences are loaded separately from `my_job_preferences.yaml`.
 
 ## Architecture Philosophy
 
@@ -394,34 +450,36 @@ Before the main workflow, a separate profile-generation capability may run to pr
 2. Command-line options are processed. If `--generate-job-search-profile` is present, follow Section 6.2 instead.
 3. The YAML configuration file is loaded.
 4. The job search profile is loaded from cache, or generated if the cache file does not exist (see Section 3.5).
-5. Search tools discover job posting URLs using criteria from the job search profile:
+5. User job search preferences are loaded from `search_profile.job_search_preferences.file`.
+6. Search tools discover job posting URLs using criteria from the job search profile **and** user preferences:
 
    * Company websites
    * Job boards
    * Internet search engines (via Serper)
-6. Duplicate postings are removed using the posting history. When a duplicate is found, **date last seen** is updated and further processing for that posting is skipped.
-7. Each remaining posting is downloaded (HTTP preferred; Playwright fallback for dynamic pages).
-8. Relevant information is extracted, including:
+7. Duplicate postings are removed using the posting history. When a duplicate is found, **date last seen** is updated and further processing for that posting is skipped.
+8. Each remaining posting is downloaded (HTTP preferred; Playwright fallback for dynamic pages).
+9. Relevant information is extracted, including:
 
    * Company
    * Job title
    * Description
    * Location
    * Address (when available)
-9. Deterministic filtering is applied before ranking:
+10. Deterministic filtering is applied before ranking:
 
    * Location filtering
    * Duplicate detection
-   * Excluded companies or job types (from job search profile or additional profile information)
-10. Each remaining posting is ranked against the candidate profile using the job search profile and input resume sources. The LLM performs semantic evaluation (resume/job fit, equivalent experience, similar responsibilities, terminology, job title interpretation) and produces a confidence score between **0.00** and **1.00**.
-11. Each posting is written as a Markdown document:
+   * Excluded companies or job types (from job search profile)
+   * Excluded roles (from user preferences)
+11. Each remaining posting is ranked against the candidate profile using the job search profile, user preferences, and input resume sources. The LLM performs semantic evaluation (resume/job fit, equivalent experience, similar responsibilities, terminology, job title interpretation, alignment with user role preferences) and produces a confidence score between **0.00** and **1.00**.
+12. Each posting is written as a Markdown document:
 
 ```text
 <posting_output>/<company_name>/<job_title>.md
 ```
 
-12. The posting history is updated.
-13. If the confidence score is greater than or equal to **confidence_resume**, the resume customization script is invoked (fire-and-forget).
+13. The posting history is updated.
+14. If the confidence score is greater than or equal to **confidence_resume**, the resume customization script is invoked (fire-and-forget).
 
 ## 6.2 Profile-Only Run (`--generate-job-search-profile`)
 

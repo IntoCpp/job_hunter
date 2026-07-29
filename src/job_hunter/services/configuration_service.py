@@ -12,6 +12,7 @@ from job_hunter.models.config import (
     AppConfig,
     CompanySite,
     JobBoard,
+    JobSearchPreferencesConfig,
     LocationConfig,
     ModelConfig,
     ResumeReworkConfig,
@@ -93,6 +94,13 @@ def load_config(config_path: Path) -> AppConfig:
     if not input_files or not output_file.name:
         raise ValueError("search_profile.input_files and search_profile.output_file are required")
 
+    preferences_data = search_profile_data.get("job_search_preferences") or {}
+    preferences_file = _resolve_path(str(preferences_data.get("file", "")), base_dir)
+    if not preferences_file.name:
+        raise ValueError("search_profile.job_search_preferences.file is required")
+    if not preferences_file.exists():
+        raise FileNotFoundError(f"Job search preferences file not found: {preferences_file}")
+
     resume_rework_data = data.get("resume_rework") or {}
     models_data = data.get("models") or {}
     web_sites_data = data.get("web_sites") or {}
@@ -100,7 +108,11 @@ def load_config(config_path: Path) -> AppConfig:
     return AppConfig(
         posting_output=_resolve_path(str(data.get("posting_output", "")), base_dir),
         posting_history=_resolve_path(str(data.get("posting_history", "")), base_dir),
-        search_profile=SearchProfileConfig(input_files=input_files, output_file=output_file),
+        search_profile=SearchProfileConfig(
+            input_files=input_files,
+            output_file=output_file,
+            job_search_preferences=JobSearchPreferencesConfig(file=preferences_file),
+        ),
         resume_rework=ResumeReworkConfig(
             script_path=Path(str(resume_rework_data.get("script_path", ""))),
             working_directory=Path(str(resume_rework_data.get("working_directory", ""))),
