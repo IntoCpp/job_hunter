@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 
 class LLMService:
-    """Thin wrapper around OpenAI chat completions for structured tasks."""
+    """Thin wrapper around the OpenAI Responses API for structured tasks."""
 
     def __init__(self, api_key: str) -> None:
         """Initialize the LLM service.
@@ -33,15 +33,16 @@ class LLMService:
         Returns:
             Model response text.
         """
-        response = self._client.chat.completions.create(
+        response = self._client.responses.create(
             model=model,
-            messages=[
+            input=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt},
             ],
-            temperature=0.2,
+            store=True,
+            # temperature=0.2, # In comment: Got an exception: With the selected model (gpt-5.6-sol), only the default value '1' is allowed.
         )
-        content = response.choices[0].message.content or ""
+        content = response.output_text or ""
         logger.debug("LLM response length: %s", len(content))
         return content.strip()
 
