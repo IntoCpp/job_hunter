@@ -216,7 +216,7 @@ List of acceptable locations.
 Each location entry contains:
 
 * `name` — short human-readable label
-* `description` — clarifies the geographic scope
+* `guidance` — clarifies the geographic scope for AI-assisted location matching
 
 Location matching shall be performed using AI-assisted interpretation.
 
@@ -227,10 +227,10 @@ Example:
 ```yaml
 locations:
   - name: "Montreal Greater Area"
-    description: "Montreal and surrounding areas accessible by public transport or reasonable commute"
+    guidance: "Montreal and surrounding areas accessible by public transport or reasonable commute"
 
   - name: "South Shore"
-    description: "Longueuil, Brossard, Saint-Hubert, and nearby cities"
+    guidance: "Longueuil, Brossard, Saint-Hubert, and nearby cities"
 ```
 
 Any posting outside the acceptable locations shall be rejected.

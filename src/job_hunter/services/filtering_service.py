@@ -37,5 +37,5 @@ def build_location_context(locations: list[LocationConfig]) -> str:
     Returns:
         Human-readable location context string.
     """
-    lines = [f"- {item.name}: {item.description}" for item in locations]
+    lines = [f"- {item.name}: {item.guidance}" for item in locations]
     return "\n".join(lines)

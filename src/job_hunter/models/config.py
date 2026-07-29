@@ -37,10 +37,10 @@ class ModelConfig:
 
 @dataclass
 class LocationConfig:
-    """Human-readable location definition for matching."""
+    """Human-readable location definition for AI-assisted matching."""
 
     name: str
-    description: str
+    guidance: str
 
 
 @dataclass

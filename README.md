@@ -11,6 +11,23 @@ The project documentation is organized as follows:
 * **requirements.md** — Functional requirements and project objectives. This document is the authoritative source for *what* the software must do.
 * **design.md** — Software architecture, design decisions, implementation strategy, and technical details. This document is the authoritative source for *how* the software is implemented.
 
+## quick start
+
+### Run the tool
+
+First we recommend generating your job profile based you resume (and other file). Indicate where to find them in the [config.yaml](./config/config.yaml) file in section `search_profile`. This will generate your profile and save it. **Make sure to review it**, it will be used each run until you delete it. A new one is generated if not found, so if you change your resume (or other files), just delete your generated profile.
+
+> uv run job-hunter --generate-job-search-profile --config config/config.yaml
+
+Or change the prod [config.yaml](./config/config.yaml) and just run 
+
+> uv run job-hunter --generate-job-search-profile --config config/config.yaml
+
+### Run uinot tests
+
+> uv run pytest -v
+
+
 ## Status
 
 Project currently in the design phase.

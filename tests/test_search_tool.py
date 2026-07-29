@@ -26,7 +26,7 @@ def _config() -> AppConfig:
         resume_rework=ResumeReworkConfig(script_path=MagicMock(), working_directory=MagicMock()),
         confidence_resume=0.9,
         models=ModelConfig("a", "b", "c", "d", "e"),
-        locations=[LocationConfig(name="Montreal Greater Area", description="Montreal region")],
+        locations=[LocationConfig(name="Montreal Greater Area", guidance="Montreal region")],
         web_sites=WebSitesConfig(),
         search=SearchConfig(provider="serper"),
         config_path=MagicMock(),

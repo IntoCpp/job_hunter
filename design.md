@@ -763,17 +763,17 @@ confidence_resume: 0.90
 
 # ── AI models (OpenAI model identifiers) ─────────────────────────
 models:
-  agent: "gpt-4o-mini"          # Agent orchestration
-  profile: "gpt-4o-mini"        # Job search profile generation
-  ranking: "gpt-4o"             # Semantic ranking (accuracy-critical)
-  location: "gpt-4o-mini"       # Location interpretation
-  extraction: "gpt-4o-mini"     # Difficult extraction cases
+  agent: "gpt-4o-mini"        # Reserved for JobHunter Agent orchestration (future agent-driven workflow steps)
+  profile: "gpt-4o-mini"      # Analyzes resume input files and generates job_search_profile.yaml
+  ranking: "gpt-4o"           # Scores each posting 0.00–1.00 for resume/job fit; use a capable model for accuracy
+  location: "gpt-4o-mini"     # Decides whether a posting location matches configured acceptable areas
+  extraction: "gpt-4o-mini"   # Extracts company, title, location, address, and description from posting pages
 
 locations:
   - name: "Montreal Greater Area"
-    description: "Montreal and surrounding areas accessible by public transport or reasonable commute"
+    guidance: "Montreal and surrounding areas accessible by public transport or reasonable commute"
   - name: "South Shore"
-    description: "Longueuil, Brossard, Saint-Hubert, and nearby cities"
+    guidance: "Longueuil, Brossard, Saint-Hubert, and nearby cities"
 
 # ── Search sources ───────────────────────────────────────────────
 web_sites:

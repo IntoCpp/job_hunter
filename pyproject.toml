@@ -15,6 +15,7 @@ dependencies = [
 
 [project.scripts]
 job-hunter = "job_hunter.cli:main"
+job_hunter = "job_hunter.cli:main"
 
 [dependency-groups]
 dev = [

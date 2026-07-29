@@ -114,7 +114,7 @@ def load_config(config_path: Path) -> AppConfig:
             extraction=str(models_data.get("extraction", "gpt-4o-mini")),
         ),
         locations=[
-            LocationConfig(name=str(item.get("name", "")), description=str(item.get("description", "")))
+            LocationConfig(name=str(item.get("name", "")), guidance=str(item.get("guidance", "")))
             for item in data.get("locations", [])
         ],
         web_sites=WebSitesConfig(
