@@ -1,0 +1,40 @@
+# Job-Hunter test/development configuration
+# Uses anonymized fixtures from tests/test_data/
+
+posting_output: ".test/output/"
+posting_history: ".test/output/posting_history.yaml"
+
+search_profile:
+  input_files:
+    - "tests/test_data/sample_resume.md"
+    - "tests/test_data/sample_resume_analysis.json"
+  output_file: ".test/output/job_search_profile.yaml"
+
+resume_rework:
+  script_path: "C:/Users/ERIC/Documents/Code/job-hunter-resume-rework/resume_rework.py"
+  working_directory: "C:/Users/ERIC/Documents/Code/job-hunter-resume-rework"
+
+confidence_resume: 0.90
+
+models:
+  agent: "gpt-4o-mini"
+  profile: "gpt-4o-mini"
+  ranking: "gpt-4o"
+  location: "gpt-4o-mini"
+  extraction: "gpt-4o-mini"
+
+locations:
+  - name: "Montreal Greater Area"
+    description: "Montreal and surrounding areas accessible by public transport or reasonable commute"
+  - name: "South Shore"
+    description: "Longueuil, Brossard, Saint-Hubert, and nearby cities"
+
+web_sites:
+  companies:
+    - url: "https://jobsearch.alstom.com/"
+  job_boards:
+    - name: "LinkedIn"
+    - name: "Indeed"
+
+search:
+  provider: serper

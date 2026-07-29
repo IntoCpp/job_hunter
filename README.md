@@ -17,7 +17,7 @@ Project currently in the design phase.
 
 ## Work plan
 
-* Phase 1 — Understanding:
+* Phase 1 — Understanding: DONE
   * Read the project documentation and ask any questions before implementation.
   * Make sure the files under "./cursor/rules" are formatted to be used efficiently by Cursor. The current format is Markdown, you can change it to something more efficient for you. Do not change, add or remove any rules.
 * Phase 2 — Setup

@@ -1,0 +1,55 @@
+{
+  "full_name": "Alex Sample",
+  "location": "Montreal, Quebec, Canada",
+  "headline": "Software Development Manager | Engineering Team Lead",
+  "executive_profile": "Software engineering professional seeking leadership roles in software development and delivery.",
+  "years_experience": 15,
+  "preferred_positioning": [
+    "Software Development Manager",
+    "Software Engineering Manager",
+    "Engineering Team Lead"
+  ],
+  "avoid_positioning": ["Intern", "Junior Developer"],
+  "core_competencies": [
+    "Software development leadership",
+    "Agile / Scrum",
+    "CI/CD"
+  ],
+  "technical_skills": ["Python", "C++", "Git", "Pytest"],
+  "leadership_skills": ["Team leadership", "Mentorship"],
+  "methodologies": ["Agile", "Scrum"],
+  "certifications": [],
+  "experience": [
+    {
+      "employer": "Example Corp",
+      "title": "Software Development Manager",
+      "location": "Montreal, Quebec",
+      "start_year": 2018,
+      "end_year": null,
+      "is_current": true,
+      "summary": "Lead software delivery and engineering practices.",
+      "key_contributions": ["Introduced CI/CD pipelines"],
+      "technologies": ["Python", "C++", "Git"],
+      "team_size": 8,
+      "seniority_level": "Manager",
+      "keywords": ["Leadership", "CI/CD"]
+    }
+  ],
+  "notable_projects": [],
+  "education": [
+    {
+      "school": "Example University",
+      "degree": null,
+      "field": "Computer Science",
+      "location": "Montreal, Quebec",
+      "year": null,
+      "notes": null
+    }
+  ],
+  "professional_development": [],
+  "high_value_keywords": ["Python", "Software Development Manager", "Agile"],
+  "career_narrative": "Progressed from developer to engineering manager.",
+  "domain_expertise": ["Software products"],
+  "languages": ["English", "French"],
+  "inferred_missing_fields": []
+}
