@@ -7,7 +7,7 @@ import logging
 import sys
 from pathlib import Path
 
-from job_hunter.agent.orchestrator import JobHunterAgent
+from job_hunter.agent.orchestrator import JobHunterAgent, RunOptions
 from job_hunter.services.configuration_service import load_config, load_environment
 from job_hunter.utils.logging_config import default_log_file, setup_logging
 
@@ -35,7 +35,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--test",
         action="store_true",
-        help="Enable test mode: limit to 2 postings and enable verbose logging",
+        help="Enable test mode: limit to 2 new accepted postings and enable verbose logging",
     )
     parser.add_argument(
         "--verbose",
@@ -47,23 +47,30 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Generate or regenerate the job search profile only, then exit",
     )
+    parser.add_argument(
+        "--skip-resume",
+        action="store_true",
+        help="Run the full workflow but skip resume customization",
+    )
+    parser.add_argument(
+        "--max",
+        type=int,
+        metavar="N",
+        help="Stop after N new validated postings are added to accepted history",
+    )
     return parser
 
 
 def main(argv: list[str] | None = None) -> int:
-    """Entry point for the Job-Hunter CLI.
-
-    Parameters:
-        argv: Optional argument list (defaults to sys.argv[1:]).
-
-    Returns:
-        Process exit code.
-    """
+    """Entry point for the Job-Hunter CLI."""
     parser = build_parser()
     args = parser.parse_args(argv)
 
     if args.test:
         args.verbose = True
+
+    if args.max is not None and args.max < 1:
+        parser.error("--max must be a positive integer")
 
     try:
         load_environment()
@@ -75,7 +82,12 @@ def main(argv: list[str] | None = None) -> int:
             agent.generate_profile_only()
             return 0
 
-        agent.run(test_mode=args.test)
+        run_options = RunOptions(
+            test_mode=args.test,
+            skip_resume=args.skip_resume,
+            max_new_postings=2 if args.test else args.max,
+        )
+        agent.run(options=run_options)
         return 0
     except Exception:
         logger.exception("Job-Hunter execution failed")

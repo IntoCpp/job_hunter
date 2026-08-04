@@ -30,26 +30,13 @@ Or change the prod [config.yaml](./config/config.yaml) and just run
 
 ## Status
 
-Project currently in the design phase.
+Initial implementation complete. The project continues to evolve through incremental improvements.
 
-## Work plan
+## Change History
 
-* Phase 1 — Understanding: DONE
-  * Read the project documentation and ask any questions before implementation.
-  * Make sure the files under "./cursor/rules" are formatted to be used efficiently by Cursor. The current format is Markdown, you can change it to something more efficient for you. Do not change, add or remove any rules.
-* Phase 2 — Setup
-  * Create the `.gitigore` file for this project. Keep it updated as needed in this step.
-  * Setup the Python project:
-
-```text
-uv
-dependencies
-project structure
-initial tests
-```  
-
-* Phase 3 — Implementation
-  * Implement the project according to requirements.md and design.md.
+- **2026-07-30** — Added pipeline validation for downloads and extractions, split history files, artifact saving (raw HTML, extraction/ranking JSON), externalized AI prompts, improved ranking output, and CLI options `--skip-resume` and `--max N`.
+- **2026-07-29** — Enabled OpenAI Responses API logging (`store=true`) and fixed company page link normalization for query/fragment hrefs.
+- **2026-07-28** — Completed first development cycle: search, download, extraction, ranking, history, resume integration, and CLI.
 
 ### Implementation with Cursor
 

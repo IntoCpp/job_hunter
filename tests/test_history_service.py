@@ -16,7 +16,6 @@ def _sample_posting() -> JobPosting:
         description="Lead engineering teams.",
     )
 
-
 def test_history_duplicate_detection(tmp_path: Path) -> None:
     """Duplicate postings are detected by company, title, and location."""
     history = HistoryService(tmp_path / "history.yaml")
@@ -35,7 +34,7 @@ def test_history_touch_duplicate_updates_last_seen(tmp_path: Path) -> None:
 
     history.save()
     reloaded = HistoryService(history_path)
-    entry = reloaded._entries[0]
+    entry = reloaded._accepted[0]
     assert entry.date_last_seen == date(2026, 2, 1)
 
 
@@ -49,5 +48,5 @@ def test_history_save_and_load_round_trip(tmp_path: Path) -> None:
     history.save()
 
     reloaded = HistoryService(history_path)
-    assert len(reloaded._entries) == 1
-    assert reloaded._entries[0].ranking_score == 0.91
+    assert len(reloaded._accepted) == 1
+    assert reloaded._accepted[0].ranking_score == 0.91

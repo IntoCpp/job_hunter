@@ -1,11 +1,11 @@
 """Tests for user job search preferences loading and workflow integration."""
 
 from pathlib import Path
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
-from job_hunter.agent.orchestrator import JobHunterAgent
+from job_hunter.agent.orchestrator import JobHunterAgent, RunOptions
 from job_hunter.models.config import (
     AppConfig,
     JobSearchPreferencesConfig,
@@ -26,6 +26,8 @@ from job_hunter.services.preferences_service import (
 )
 from job_hunter.services.configuration_service import load_config
 from job_hunter.tools.search.search_tool import SearchTool
+from job_hunter.models.pipeline import RankingResult, StageStatus
+from job_hunter.tools.search.base import SearchResult
 from job_hunter.tools.search.company_provider import CompanyWebsiteSearchProvider
 from job_hunter.tools.search.job_board_provider import JobBoardSearchProvider
 
@@ -139,7 +141,13 @@ def _agent_config(tmp_path: Path) -> AppConfig:
     )
 
 
-def test_agent_run_passes_preferences_to_search_and_ranking(tmp_path: Path) -> None:
+@patch("job_hunter.agent.orchestrator.save_success_artifacts")
+@patch("job_hunter.agent.orchestrator.validate_downloaded_page")
+def test_agent_run_passes_preferences_to_search_and_ranking(
+    mock_validate: MagicMock,
+    mock_save_artifacts: MagicMock,
+    tmp_path: Path,
+) -> None:
     """Workflow loads preferences and passes them to search and ranking tools."""
     config = _agent_config(tmp_path)
     (tmp_path / "resume.md").write_text("# Resume", encoding="utf-8")
@@ -149,22 +157,24 @@ def test_agent_run_passes_preferences_to_search_and_ranking(tmp_path: Path) -> N
         company="Example Corp",
         location="Montreal",
         url="https://example.com/job/1",
-        description="Lead teams",
+        description="Lead software development teams with responsibilities and qualifications.",
     )
+    mock_validate.return_value = MagicMock(status=StageStatus.SUCCESS)
+    mock_save_artifacts.return_value = tmp_path / "output" / "posting.md"
 
     profile_service = MagicMock()
     profile_service.load_or_generate.return_value = profile
     history = MagicMock()
     history.is_duplicate.return_value = False
     search = MagicMock()
-    search.discover_urls.return_value = ["https://example.com/job/1"]
+    search.discover_urls.return_value = [SearchResult(url="https://example.com/job/1", source="serper")]
     download = MagicMock()
-    download.download.return_value = "<html>job</html>"
+    download.download.return_value = "<html>job description responsibilities qualifications apply now</html>" * 20
     extract = MagicMock()
-    extract.extract.return_value = posting
+    extract.extract.return_value = (posting, {"extraction_status": "SUCCESS"})
     rank = MagicMock()
     rank.should_process.return_value = (True, "")
-    rank.rank.return_value = 0.95
+    rank.rank.return_value = RankingResult(status=StageStatus.SUCCESS, overall_score=0.95, reason="Good fit")
     resume = MagicMock()
 
     agent = JobHunterAgent(
@@ -178,7 +188,7 @@ def test_agent_run_passes_preferences_to_search_and_ranking(tmp_path: Path) -> N
         resume_tool=resume,
     )
 
-    agent.run(test_mode=True)
+    agent.run(options=RunOptions(test_mode=True))
 
     search.discover_urls.assert_called_once()
     assert isinstance(search.discover_urls.call_args.args[1], JobSearchPreferences)

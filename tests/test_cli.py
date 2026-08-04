@@ -21,6 +21,14 @@ def test_parser_generate_profile_flag() -> None:
     assert args.config == ".test/config.yaml"
 
 
+def test_parser_skip_resume_and_max_flags() -> None:
+    """Skip resume and max flags are accepted."""
+    parser = build_parser()
+    args = parser.parse_args(["--skip-resume", "--max", "5"])
+    assert args.skip_resume is True
+    assert args.max == 5
+
+
 def test_parser_custom_config() -> None:
     """Custom config path is accepted."""
     parser = build_parser()

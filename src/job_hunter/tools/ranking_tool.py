@@ -8,28 +8,13 @@ from job_hunter.models.config import AppConfig
 from job_hunter.models.job_posting import JobPosting
 from job_hunter.models.job_search_preferences import JobSearchPreferences
 from job_hunter.models.job_search_profile import JobSearchProfile
+from job_hunter.models.pipeline import RankingResult, StageStatus
 from job_hunter.services.filtering_service import build_location_context, is_excluded_posting
 from job_hunter.services.llm_service import LLMService
 from job_hunter.services.preferences_service import format_preferences_for_prompt
+from job_hunter.services.prompt_service import load_prompt
 
 logger = logging.getLogger(__name__)
-
-_LOCATION_SYSTEM_PROMPT = (
-    "Decide if a job posting location matches any acceptable configured locations. "
-    "Location text may be in English or French. "
-    "Return JSON with keys: acceptable (boolean), reason (string)."
-)
-
-_RANKING_SYSTEM_PROMPT = (
-    "Score how well a job posting matches the candidate profile on a 0.00 to 1.00 scale. "
-    "The posting may be in English or French; evaluate fit regardless of language. "
-    "Interpret equivalent job titles and responsibilities across languages "
-    "(for example, 'Directeur de développement logiciel' and 'Software Development Manager'). "
-    "User job search preferences indicate what the candidate wants to prioritize, accept, or avoid. "
-    "Increase the score for preferred roles, keep acceptable roles competitive, and lower the score "
-    "for roles that conflict with user preferences or excluded roles. "
-    "Return JSON with keys: confidence (number), reason (string)."
-)
 
 
 class RankingTool:
@@ -61,6 +46,8 @@ class RankingTool:
         Returns:
             Tuple of (should_continue, rejection_reason).
         """
+        if posting.extraction_status != StageStatus.SUCCESS or not posting.has_required_fields():
+            return False, posting.extraction_failure_reason or "Extraction failed"
         if is_excluded_posting(posting, profile, preferences):
             return False, "Excluded by profile or user preference rules"
         if not self._location_is_acceptable(posting):
@@ -73,7 +60,7 @@ class RankingTool:
         profile: JobSearchProfile,
         resume_context: str,
         preferences: JobSearchPreferences,
-    ) -> float:
+    ) -> RankingResult:
         """Compute semantic confidence score for a posting.
 
         Parameters:
@@ -83,8 +70,17 @@ class RankingTool:
             preferences: User-maintained job search preferences.
 
         Returns:
-            Confidence score between 0.00 and 1.00.
+            Ranking result with overall and criterion scores.
         """
+        if posting.extraction_status != StageStatus.SUCCESS or not posting.has_required_fields():
+            reason = posting.extraction_failure_reason or "Missing required extraction fields"
+            return RankingResult(
+                status=StageStatus.FAILED,
+                overall_score=None,
+                reason="Ranking skipped",
+                failure_reason=reason,
+            )
+
         profile_summary = (
             f"Summary: {profile.summary}\n"
             f"Target titles: {', '.join(profile.target_titles)}\n"
@@ -101,7 +97,7 @@ class RankingTool:
         )
         data = self._llm.complete_json(
             model=self._config.models.ranking,
-            system_prompt=_RANKING_SYSTEM_PROMPT,
+            system_prompt=load_prompt("rank_posting"),
             user_prompt=(
                 f"AI PROFILE:\n{profile_summary}\n\n"
                 f"USER PREFERENCES:\n{preferences_summary}\n\n"
@@ -109,10 +105,21 @@ class RankingTool:
                 f"POSTING:\n{posting_summary}"
             ),
         )
-        confidence = float(data.get("confidence", 0.0))
-        confidence = max(0.0, min(1.0, confidence))
-        logger.info("Ranked %s at %.2f", posting.title, confidence)
-        return confidence
+        overall = _score_value(data.get("overall", data.get("confidence", 0.0)))
+        criterion_scores = {
+            "software_relevance": _score_value(data.get("software_relevance", 0.0)),
+            "leadership": _score_value(data.get("leadership", 0.0)),
+            "management": _score_value(data.get("management", 0.0)),
+            "location": _score_value(data.get("location", 0.0)),
+        }
+        reason = str(data.get("reason", ""))
+        logger.info("Ranked %s at %.2f", posting.title, overall)
+        return RankingResult(
+            status=StageStatus.SUCCESS,
+            overall_score=overall,
+            criterion_scores=criterion_scores,
+            reason=reason,
+        )
 
     def _location_is_acceptable(self, posting: JobPosting) -> bool:
         if not self._config.locations:
@@ -120,7 +127,7 @@ class RankingTool:
         location_context = build_location_context(self._config.locations)
         data = self._llm.complete_json(
             model=self._config.models.location,
-            system_prompt=_LOCATION_SYSTEM_PROMPT,
+            system_prompt=load_prompt("location_filter"),
             user_prompt=(
                 f"ACCEPTABLE LOCATIONS:\n{location_context}\n\n"
                 f"POSTING LOCATION:\n{posting.location}\n"
@@ -128,3 +135,11 @@ class RankingTool:
             ),
         )
         return bool(data.get("acceptable", False))
+
+
+def _score_value(value: object) -> float:
+    try:
+        score = float(value)
+    except (TypeError, ValueError):
+        return 0.0
+    return max(0.0, min(1.0, score))

@@ -1,11 +1,67 @@
 preferred_roles:
+preferred_roles:
+
   - title: "Software Development Manager"
     priority: 1
-    description: "Management role leading software development teams."
+    description: >
+      Lead software development teams, manage software projects,
+      mentor developers, improve engineering practices, and ensure
+      successful delivery of high-quality software products.
+
+  - title: "Software Engineering Manager"
+    priority: 2
+    description: >
+      Lead software engineering teams, improve technical execution,
+      foster collaboration, and establish effective software
+      development processes.
+
+  - title: "AI Engineering Enablement Manager"
+    priority: 3
+    description: >
+      Lead the adoption of Artificial Intelligence within software
+      development teams. Evaluate AI tools, define best practices,
+      train developers, integrate AI into the software development
+      lifecycle, and improve productivity, software quality, and
+      engineering efficiency.
+
+  - title: "Software Process Improvement Manager"
+    priority: 4
+    description: >
+      Evaluate, design, implement, and continuously improve software
+      development processes. Establish engineering standards, Agile
+      practices, quality metrics, development workflows, and continuous
+      improvement initiatives.
 
   - title: "Software Quality Assurance Manager"
-    priority: 2
-    description: "Management role leading software quality and QA processes."
+    priority: 5
+    description: >
+      Lead software quality assurance teams, define QA strategy,
+      improve testing processes, increase automation, establish quality
+      metrics, and ensure software quality throughout the development
+      lifecycle.
+
+  - title: "Software Quality Manager"
+    priority: 6
+    description: >
+      Establish and maintain organization-wide software quality
+      processes. Lead quality initiatives, governance, process audits,
+      engineering excellence, and continuous improvement.
+
+  - title: "Engineering Process & Quality Manager"
+    priority: 7
+    description: >
+      Improve engineering organizations by defining software
+      development processes, quality practices, governance,
+      performance indicators, compliance, process maturity,
+      and continuous improvement initiatives.
+
+  - title: "Quality Management Systems (QMS) Manager"
+    priority: 8
+    description: >
+      Design, implement, maintain, or improve ISO 9001 compliant
+      Quality Management Systems. Define organizational processes,
+      documentation, governance, KPIs, audits, risk management, and
+      continuous improvement programs.
 
 acceptable_roles:
   - title: "Software Team Lead"

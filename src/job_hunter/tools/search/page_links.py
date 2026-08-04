@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from urllib.parse import urljoin, urlparse
 
 import httpx
 
@@ -10,6 +11,7 @@ from job_hunter.utils.url import extract_domain
 
 _HREF_PATTERN = re.compile(r'href=["\']([^"\']+)["\']', re.IGNORECASE)
 _JOB_LINK_TOKENS = ("job", "career", "emploi", "posting", "position", "offre", "carriere")
+_SKIP_HREF_PREFIXES = ("javascript:", "mailto:", "tel:", "data:")
 
 
 def extract_job_links_from_html(page_url: str, html: str, domain: str) -> list[str]:
@@ -62,10 +64,29 @@ def fetch_page_html(page_url: str, http_client: httpx.Client | None = None) -> s
 
 
 def _normalize_href(page_url: str, href: str) -> str:
+    """Resolve an href attribute to an absolute http(s) URL.
+
+    Parameters:
+        page_url: URL the HTML was fetched from.
+        href: Raw href attribute value.
+
+    Returns:
+        Absolute URL, or empty string when the href should be skipped.
+    """
     href = href.strip()
-    if href.startswith("http://") or href.startswith("https://"):
-        return href
-    if href.startswith("/"):
-        base = httpx.URL(page_url)
-        return str(base.copy_with(path=href))
-    return ""
+    if not href or href.startswith("#"):
+        return ""
+    if href.casefold().startswith(_SKIP_HREF_PREFIXES):
+        return ""
+
+    try:
+        if href.startswith(("http://", "https://")):
+            normalized = href
+        else:
+            normalized = urljoin(page_url, href)
+        parsed = urlparse(normalized)
+        if parsed.scheme not in ("http", "https"):
+            return ""
+        return normalized
+    except (ValueError, TypeError):
+        return ""

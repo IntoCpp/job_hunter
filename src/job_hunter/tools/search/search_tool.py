@@ -39,15 +39,15 @@ class SearchTool:
         self._company = company_provider
         self._job_board = job_board_provider
 
-    def discover_urls(self, profile: JobSearchProfile, preferences: JobSearchPreferences) -> list[str]:
-        """Discover unique job posting URLs using all configured providers.
+    def discover_urls(self, profile: JobSearchProfile, preferences: JobSearchPreferences) -> list[SearchResult]:
+        """Discover unique job posting search results using all configured providers.
 
         Parameters:
             profile: Job search profile used to build queries.
             preferences: User-maintained job search preferences.
 
         Returns:
-            Unique discovered URLs.
+            Unique discovered search results with source metadata.
         """
         location_terms = [location.name for location in self._config.locations]
         search_titles = build_search_titles(profile.all_titles(), preferences)
@@ -59,16 +59,16 @@ class SearchTool:
         results.extend(self._job_board.discover_for_profile(profile, location_terms, search_titles))
         results.extend(self._company.discover_for_profile(profile, location_terms, search_titles))
 
-        unique_urls: list[str] = []
+        unique_results: list[SearchResult] = []
         seen: set[str] = set()
         for item in results:
             if item.url in seen:
                 continue
             seen.add(item.url)
-            unique_urls.append(item.url)
+            unique_results.append(item)
 
-        logger.info("Found %s posting URLs.", len(unique_urls))
-        return unique_urls
+        logger.info("Found %s posting URLs.", len(unique_results))
+        return unique_results
 
     def _build_general_queries(
         self,

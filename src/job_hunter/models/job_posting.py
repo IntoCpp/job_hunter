@@ -4,7 +4,27 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from job_hunter.models.history import normalize_history_field
+from job_hunter.models.pipeline import StageStatus
+
 SUPPORTED_LANGUAGES = frozenset({"en", "fr"})
+UNKNOWN_COMPANY = "Unknown Company"
+UNKNOWN_TITLE = "Unknown Title"
+UNKNOWN_LOCATION = "Unknown Location"
+EXTRACTION_FAILED_COMPANY = "Extraction Failed"
+PLACEHOLDER_VALUES = frozenset(
+    {
+        "",
+        "none",
+        "null",
+        "unknown",
+        "unknown company",
+        "unknown title",
+        "unknown location",
+        "n/a",
+        "na",
+    }
+)
 
 
 def normalize_language(value: str) -> str:
@@ -26,6 +46,21 @@ def normalize_language(value: str) -> str:
     return ""
 
 
+def is_present_field(value: str | None) -> bool:
+    """Return True when a field contains a usable non-placeholder value.
+
+    Parameters:
+        value: Raw field value from extraction or history.
+
+    Returns:
+        True when the value is present and not a placeholder.
+    """
+    if value is None:
+        return False
+    normalized = " ".join(str(value).strip().casefold().split())
+    return normalized not in PLACEHOLDER_VALUES
+
+
 @dataclass
 class JobPosting:
     """Structured job posting discovered and processed by Job-Hunter."""
@@ -40,3 +75,22 @@ class JobPosting:
     confidence_score: float | None = None
     markdown_path: str = ""
     raw_content: str = field(default="", repr=False)
+    extraction_status: StageStatus = StageStatus.SUCCESS
+    extraction_failure_reason: str = ""
+    source: str = ""
+
+    def has_required_fields(self) -> bool:
+        """Return True when company, title, and description are present."""
+        return (
+            is_present_field(self.company)
+            and is_present_field(self.title)
+            and is_present_field(self.description)
+        )
+
+    def duplicate_key(self) -> tuple[str, str, str]:
+        """Return normalized key used for duplicate detection."""
+        return (
+            normalize_history_field(self.company),
+            normalize_history_field(self.title),
+            normalize_history_field(self.location),
+        )

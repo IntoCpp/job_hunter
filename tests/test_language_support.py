@@ -56,7 +56,7 @@ def test_extraction_tool_preserves_language(tmp_path: Path) -> None:
     }
     tool = ExtractionTool(config, llm)
 
-    posting = tool.extract(url="https://example.com/job", content="<html>offre</html>")
+    posting, _payload = tool.extract(url="https://example.com/job", content="<html>offre</html>" * 50)
 
     assert posting.language == "fr"
     assert posting.title == "Directeur de développement logiciel"
@@ -92,6 +92,7 @@ def test_history_service_records_language_metadata(tmp_path: Path) -> None:
         company="Example Corp",
         location="Montreal",
         url="https://example.com/job/1",
+        description="Lead software teams.",
         language="en",
         confidence_score=0.9,
     )
@@ -100,4 +101,4 @@ def test_history_service_records_language_metadata(tmp_path: Path) -> None:
     service.save()
 
     reloaded = HistoryService(history_path)
-    assert reloaded._entries[0].metadata["language"] == "en"
+    assert reloaded._accepted[0].metadata["language"] == "en"

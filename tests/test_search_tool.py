@@ -14,6 +14,7 @@ from job_hunter.models.config import (
 )
 from job_hunter.models.job_search_preferences import JobSearchPreferences
 from job_hunter.models.job_search_profile import JobSearchProfile
+from job_hunter.tools.search.base import SearchResult
 from job_hunter.tools.search.company_provider import CompanyWebsiteSearchProvider
 from job_hunter.tools.search.job_board_provider import JobBoardSearchProvider
 from job_hunter.tools.search.search_tool import SearchTool
@@ -44,9 +45,9 @@ def test_search_tool_deduplicates_urls() -> None:
     config = _config()
     serper = MagicMock()
     serper.discover.return_value = [
-        MagicMock(url="https://example.com/1", source="serper"),
-        MagicMock(url="https://example.com/1", source="serper"),
-        MagicMock(url="https://example.com/2", source="serper"),
+        SearchResult(url="https://example.com/1", source="serper"),
+        SearchResult(url="https://example.com/1", source="serper"),
+        SearchResult(url="https://example.com/2", source="serper"),
     ]
     company = MagicMock(spec=CompanyWebsiteSearchProvider)
     company.discover_for_profile.return_value = []
@@ -58,4 +59,5 @@ def test_search_tool_deduplicates_urls() -> None:
 
     urls = tool.discover_urls(profile, JobSearchPreferences())
 
-    assert urls == ["https://example.com/1", "https://example.com/2"]
+    assert [item.url for item in urls] == ["https://example.com/1", "https://example.com/2"]
+    assert all(isinstance(item, SearchResult) for item in urls)

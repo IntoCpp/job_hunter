@@ -10,18 +10,9 @@ import yaml
 from job_hunter.models.config import AppConfig
 from job_hunter.models.job_search_profile import JobDescriptionEntry, JobSearchProfile
 from job_hunter.services.llm_service import LLMService
+from job_hunter.services.prompt_service import load_prompt
 
 logger = logging.getLogger(__name__)
-
-_PROFILE_SYSTEM_PROMPT = (
-    "You analyze candidate materials and produce structured job search criteria as YAML. "
-    "The candidate may search in a bilingual English/French job market (for example, Montreal). "
-    "Include both English and French titles and keywords where appropriate in target_titles, "
-    "equivalent_titles, and search_keywords. "
-    "Return only valid YAML with these keys: target_titles, equivalent_titles, job_descriptions, "
-    "skills, seniority_level, preferred_industries, excluded_titles, excluded_companies, "
-    "search_keywords, summary. job_descriptions must be a list of objects with title and description."
-)
 
 
 class ProfileService:
@@ -107,7 +98,7 @@ class ProfileService:
         combined_input = read_input_files(self._config.search_profile.input_files)
         yaml_text = self._llm.complete_text(
             model=self._config.models.profile,
-            system_prompt=_PROFILE_SYSTEM_PROMPT,
+            system_prompt=load_prompt("job_search"),
             user_prompt=combined_input,
         )
         cleaned = yaml_text.removeprefix("```yaml").removeprefix("```").removesuffix("```").strip()

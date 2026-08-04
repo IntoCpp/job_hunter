@@ -6,9 +6,13 @@ posting_history: "C:/Users/ERIC/Documents/job_hunter_finds/posting_history.yaml"
 
 search_profile:
   input_files:
-    - "C:/path/to/master_resume.md"
-    - "C:/path/to/master_resume_analysis_cache.json"
-  output_file: "C:/path/to/job_search_profile.yaml"
+    - "C:/Users/ERIC/Documents/Code/job-hunter-resume-rework/input_data/master_resume.md"
+    - "C:/Users/ERIC/Documents/Code/job-hunter-resume-rework/input_data/master_resume_analysis_cache.json"
+    - "C:/Users/ERIC/Documents/Code/job-hunter-resume-rework/input_data/summary.md"
+  output_file: "C:/Users/ERIC/Documents/job_hunter_finds/job_search_profile.yaml"
+  job_search_preferences:
+    # Path relative to this config file (portable).
+    file: "./my_job_preferences.yaml"
 
 resume_rework:
   script_path: "C:/Users/ERIC/Documents/Code/job-hunter-resume-rework/resume_rework.py"
@@ -17,21 +21,100 @@ resume_rework:
 confidence_resume: 0.90
 
 models:
-  agent: "gpt-4o-mini"
-  profile: "gpt-4o-mini"
-  ranking: "gpt-4o"
-  location: "gpt-4o-mini"
-  extraction: "gpt-4o-mini"
+ agent: "gpt-5.6-terra"       # Reserved for JobHunter Agent orchestration (future agent-driven workflow steps)
+ profile: "gpt-5.6-sol"       # Analyzes resume input files and generates job_search_profile.yaml
+ ranking: "gpt-5.6-sol"       # Scores each posting 0.00–1.00 for resume/job fit; use a capable model for accuracy
+ location: "gpt-5.6-luna"     # Decides whether a posting location matches configured acceptable areas
+ extraction: "gpt-5.6-luna"   # Extracts company, title, location, address, and description from posting pages
+
+
+models_test: # Copy to use when testing
+ agent: "gpt-5-mini"        # Reserved for JobHunter Agent orchestration (future agent-driven workflow steps)
+ profile: "gpt-5"           # Analyzes resume input files and generates job_search_profile.yaml
+ ranking: "gpt-5"           # Scores each posting 0.00–1.00 for resume/job fit; use a capable model for accuracy
+ location: "gpt-5-mini"     # Decides whether a posting location matches configured acceptable areas
+ extraction: "gpt-5-mini"   # Extracts company, title, location, address, and description from posting pages
+
+models_prod: # Copy to use in production
+ agent: "gpt-5.6-terra"       # Reserved for JobHunter Agent orchestration (future agent-driven workflow steps)
+ profile: "gpt-5.6-sol"       # Analyzes resume input files and generates job_search_profile.yaml
+ ranking: "gpt-5.6-sol"       # Scores each posting 0.00–1.00 for resume/job fit; use a capable model for accuracy
+ location: "gpt-5.6-luna"     # Decides whether a posting location matches configured acceptable areas
+ extraction: "gpt-5.6-luna"   # Extracts company, title, location, address, and description from posting pages
 
 locations:
-  - name: "Montreal Greater Area"
-    description: "Montreal and surrounding areas accessible by public transport or reasonable commute"
+  - name: "Montreal Central and East"
+    description: >
+      Jobs located in downtown Montreal, central Montreal, east Montreal,
+      and nearby areas that are generally convenient to reach from the South Shore.
+      Exclude locations in the far west of Montreal unless explicitly specified
+      elsewhere.
+
+  - name: "South Shore of Montreal"
+    description: >
+      Longueuil, Brossard, Saint-Hubert, Boucherville, Saint-Bruno-de-Montarville,
+      Sainte-Julie, and nearby municipalities.
+
+  - name: "Selective North Shore"
+    description: >
+      Nearby North Shore locations that are easily accessible from the South Shore,
+      such as Laval south-est or Terrebonne. Exclude distant North Shore locations such as Blainville
+      and other areas requiring a long commute.
 
 web_sites:
   companies:
+    # Federal Government of Canada
+    - url: "https://www.canada.ca/en/services/jobs/opportunities/government.html" # Government of Canada Jobs (GC Jobs)
+    # Quebec Government
+    - url: "https://www.quebec.ca/gouvernement/travailler-gouvernement" # Quebec Government Jobs
+    # Quebec government employment portal (broader than government jobs)
+    - url: "https://www.quebec.ca/emploi/trouver-emploi-stage/consulter-offres-emplois" # Québec Emploi
+    # Quebec organizations with dedicated portals
+    - url: "https://www.revenuquebec.ca/emplois/rechercher-un-emploi/" # Revenu Québec
+    # QUEBEC agence gouvernementales
+    - url: "https://www.saaq.gouv.qc.ca/emploi"       # SAAQ - Société de l'assurance automobile du Québec
+    - url: "https://www.amf-quebec.ca/fr/carrieres"   # Autorité des marchés financiers
+    - url: "https://www.cnesst.gouv.qc.ca/fr/carrieres" # CNESST
+    - url: "https://www.etsmtl.ca/carrieres"    # ÉTS
+    - url: "https://www.polymtl.ca/carrieres"   # Polytechnique Montréal
     - url: "https://emploi.hydroquebec.com/"
+    - url: "https://emploi.saq.com/search"      # SAQ
+    # Autre
+    - url: "https://jobsearch.alstom.com/"
+    - url: "https://www.desjardins.com/qc/fr/carriere.html"
+    - url: "https://www.adacel.com/careers/"
+    - url: "https://pulsaroperations.ca/carriere/"
+    - url: "https://www.alteo.ca/en/it-recruiting-specialists-montreal.html"
+    - url: "https://www.kenova.ca/en/employers/it-recruitment/"
+    - url: "https://talentlab.com/"
+    - url: "https://gpmmom.zohorecruit.com/jobs/Careers" # Pulsar / REM
+    - url: "https://cbcrc.wd3.myworkdayjobs.com/fr-CA/CBC_Radio-Canada_Jobs" # Radio-Canada
+    - url: "https://lifeworks.wd3.myworkdayjobs.com/fr-CA/External" # Tellus
+    - url: "https://april.ca/carriere" # April Canada
+    - url: "https://cgi.njoyn.com/corp/xweb/xweb.asp?NTKN=c&page=joblisting&clid=21001" # CGI
+    - url: "https://careers.acuityinc.com" # Acuity / Distech
+    - url: "https://careers.intactfc.com" # Intact Assurance
+    - url: "https://careers.rtx.com/" # Prat et Witney
+
   job_boards:
     - name: "LinkedIn"
+      domain: "linkedin.com"
+    - name: "Indeed"
+      domain: "ca.indeed.com"
+    - name: "Workday"
+      domain: "workday.com"
+    - name: "Greenhouse"
+      domain: "greenhouse.io"
+    - name: "Eightfold"
+      domain: "eightfold.ai"
+    - name: "BambooHR"
+      domain: "bamboohr.com"
+    - name: "UltiPro" 
+      domain: "ultipro.ca"
+    - name: "njoyn."
+      domain: "njoyn.com"
+    - name: "Workable"
+      domain: "jobs.workable.com/"
 
 search:
   provider: serper
