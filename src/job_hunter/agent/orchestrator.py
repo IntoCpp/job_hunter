@@ -18,7 +18,7 @@ from job_hunter.services.artifact_service import (
 )
 from job_hunter.services.configuration_service import get_required_env
 from job_hunter.services.history_service import HistoryService
-from job_hunter.services.job_list_service import load_job_postings
+from job_hunter.services.job_list_service import format_missing_job_postings_message, job_postings_file_exists, load_job_postings
 from job_hunter.services.llm_service import LLMService
 from job_hunter.services.page_validation_service import validate_downloaded_page
 from job_hunter.services.preferences_service import load_job_search_preferences
@@ -106,6 +106,11 @@ class JobHunterAgent:
         resume_context = read_input_files(self._config.search_profile.input_files)
 
         jobs_path = run_options.job_postings_file or self._config.job_postings_file
+        if not job_postings_file_exists(jobs_path):
+            message = format_missing_job_postings_message(jobs_path)
+            logger.error(message)
+            return
+
         logger.info("Loading job postings from %s", jobs_path)
         jobs = load_job_postings(jobs_path)
 

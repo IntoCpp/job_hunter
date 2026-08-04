@@ -5,7 +5,11 @@ from pathlib import Path
 import pytest
 
 from job_hunter.models.job_to_process import JobToProcess
-from job_hunter.services.job_list_service import load_job_postings
+from job_hunter.services.job_list_service import (
+    format_missing_job_postings_message,
+    job_postings_file_exists,
+    load_job_postings,
+)
 
 
 def test_load_job_postings_reads_valid_file() -> None:
@@ -31,6 +35,24 @@ def test_load_job_postings_requires_jobs_list(tmp_path: Path) -> None:
 
     with pytest.raises(ValueError, match="jobs"):
         load_job_postings(path)
+
+
+def test_format_missing_job_postings_message_includes_path() -> None:
+    """Missing file message names the path and points to the sample file."""
+    message = format_missing_job_postings_message(Path("config/missing_jobs.yaml"))
+
+    assert "config/missing_jobs.yaml" in message
+    assert "jobs_to_process.yaml.example" in message
+    assert "--url-postings" in message
+
+
+def test_job_postings_file_exists(tmp_path: Path) -> None:
+    """Existence check reflects whether the file is on disk."""
+    missing = tmp_path / "jobs.yaml"
+    assert job_postings_file_exists(missing) is False
+
+    missing.write_text("jobs: []\n", encoding="utf-8")
+    assert job_postings_file_exists(missing) is True
 
 
 def test_load_job_postings_requires_company_and_url(tmp_path: Path) -> None:

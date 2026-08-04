@@ -9,6 +9,7 @@ from pathlib import Path
 
 from job_hunter.agent.orchestrator import JobHunterAgent, RunOptions
 from job_hunter.services.configuration_service import load_config, load_environment
+from job_hunter.services.job_list_service import format_missing_job_postings_message, job_postings_file_exists
 from job_hunter.utils.logging_config import default_log_file, setup_logging
 
 logger = logging.getLogger(__name__)
@@ -87,7 +88,14 @@ def main(argv: list[str] | None = None) -> int:
             agent.generate_profile_only()
             return 0
 
-        job_postings_file = Path(args.url_postings).resolve() if args.url_postings else None
+        jobs_path = Path(args.url_postings).resolve() if args.url_postings else config.job_postings_file
+        if not job_postings_file_exists(jobs_path):
+            message = format_missing_job_postings_message(jobs_path)
+            print(message, file=sys.stderr)
+            logger.error(message)
+            return 1
+
+        job_postings_file = jobs_path if args.url_postings else None
         run_options = RunOptions(
             test_mode=args.test,
             skip_resume=args.skip_resume,
