@@ -17,6 +17,8 @@ class PostingHistoryEntry:
     date_first_found: date
     date_last_seen: date
     ranking_score: float | None = None
+    top_matching_qualification: str = ""
+    largest_qualification_gap: str = ""
     markdown_path: str = ""
     metadata: dict[str, str] = field(default_factory=dict)
 

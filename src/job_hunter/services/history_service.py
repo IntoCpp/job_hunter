@@ -11,6 +11,8 @@ import yaml
 
 from job_hunter.models.history import PostingHistoryEntry, normalize_history_field
 from job_hunter.models.job_posting import UNKNOWN_COMPANY, JobPosting
+from job_hunter.models.pipeline import RankingResult
+from job_hunter.services.ranking_justification_service import build_ranking_justification
 
 logger = logging.getLogger(__name__)
 
@@ -106,9 +108,20 @@ class HistoryService:
         logger.info("Duplicate posting updated date_last_seen: %s / %s", posting.company, posting.title)
         return True
 
-    def add_entry(self, posting: JobPosting, *, markdown_path: str, seen_on: date | None = None) -> None:
+    def add_entry(
+        self,
+        posting: JobPosting,
+        *,
+        markdown_path: str,
+        ranking_result: RankingResult | None = None,
+        seen_on: date | None = None,
+    ) -> None:
         """Add a newly accepted posting to history."""
         today = seen_on or date.today()
+        top_match = ""
+        largest_gap = ""
+        if ranking_result is not None and ranking_result.criterion_scores:
+            top_match, largest_gap = build_ranking_justification(ranking_result)
         entry = PostingHistoryEntry(
             company=_history_company(posting.company),
             job_title=posting.title,
@@ -117,6 +130,8 @@ class HistoryService:
             date_first_found=today,
             date_last_seen=today,
             ranking_score=posting.confidence_score,
+            top_matching_qualification=top_match,
+            largest_qualification_gap=largest_gap,
             markdown_path=markdown_path,
             metadata=_build_metadata(posting),
         )
@@ -227,17 +242,7 @@ class HistoryService:
     def _save_posting_entries(self, path: Path, entries: list[PostingHistoryEntry]) -> None:
         payload = {
             "postings": [
-                {
-                    "company": entry.company,
-                    "job_title": entry.job_title,
-                    "location": entry.location,
-                    "url": entry.url,
-                    "date_first_found": entry.date_first_found.isoformat(),
-                    "date_last_seen": entry.date_last_seen.isoformat(),
-                    "ranking_score": entry.ranking_score,
-                    "markdown_path": entry.markdown_path,
-                    "metadata": entry.metadata,
-                }
+                _posting_entry_payload(entry)
                 for entry in entries
             ]
         }
@@ -271,6 +276,8 @@ class HistoryService:
             date_first_found=_parse_date(item.get("date_first_found")),
             date_last_seen=_parse_date(item.get("date_last_seen")),
             ranking_score=item.get("ranking_score"),
+            top_matching_qualification=_load_ranking_field(item, "top_matching_qualification"),
+            largest_qualification_gap=_load_ranking_field(item, "largest_qualification_gap"),
             markdown_path=str(item.get("markdown_path", "")),
             metadata={str(k): str(v) for k, v in (item.get("metadata") or {}).items()},
         )
@@ -303,3 +310,38 @@ def _parse_date(value: object) -> date:
     if isinstance(value, str) and value:
         return date.fromisoformat(value)
     return date.today()
+
+
+def _posting_entry_payload(entry: PostingHistoryEntry) -> dict[str, object]:
+    payload: dict[str, object] = {
+        "company": entry.company,
+        "job_title": entry.job_title,
+        "location": entry.location,
+        "url": entry.url,
+        "date_first_found": entry.date_first_found.isoformat(),
+        "date_last_seen": entry.date_last_seen.isoformat(),
+        "ranking_score": entry.ranking_score,
+        "markdown_path": entry.markdown_path,
+        "metadata": entry.metadata,
+    }
+    justification = _ranking_justification_payload(entry)
+    if justification is not None:
+        payload["ranking_justification"] = justification
+    return payload
+
+
+def _ranking_justification_payload(entry: PostingHistoryEntry) -> dict[str, str] | None:
+    if not entry.top_matching_qualification and not entry.largest_qualification_gap:
+        return None
+    return {
+        "top_matching_qualification": entry.top_matching_qualification,
+        "largest_qualification_gap": entry.largest_qualification_gap,
+    }
+
+
+def _load_ranking_field(item: dict[str, object], field_name: str) -> str:
+    justification = item.get("ranking_justification")
+    if isinstance(justification, dict) and field_name in justification:
+        return str(justification[field_name])
+    value = item.get(field_name)
+    return str(value) if value is not None else ""

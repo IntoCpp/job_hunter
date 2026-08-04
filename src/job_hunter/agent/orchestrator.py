@@ -244,7 +244,7 @@ class JobHunterAgent:
             ranking_data=ranking_payload,
         )
         posting.markdown_path = str(markdown_path)
-        self._history.add_entry(posting, markdown_path=str(markdown_path))
+        self._history.add_entry(posting, markdown_path=str(markdown_path), ranking_result=ranking_result)
 
         if not options.skip_resume and posting.confidence_score >= self._config.confidence_resume:
             self._resume.invoke(markdown_path)
