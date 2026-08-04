@@ -4,6 +4,14 @@ Job-Hunter is an AI-assisted Python application that searches the Internet for j
 
 The project discovers job postings from multiple sources, ranks them according to the candidate's profile, saves the results locally, and can automatically invoke a resume customization script for high-confidence matches.
 
+## `job_search_experiment` branch
+
+This branch archives my experiments with using AI to automatically discover job postings that match my profile.
+
+While the results were promising, they did not reach the level of relevance and reliability I was aiming for. Competing with specialized job search platforms (such as LinkedIn) is well beyond the scope of this personal project.
+
+To keep the project focused and deliver the highest value, I decided to remove the automated job search functionality from the main branch. Instead, I will manually identify relevant job postings and provide their URLs as input to the application. The project will then handle downloading, extracting, ranking, tracking, and optionally customizing my resume for each posting.
+
 ## Documentation
 
 The project documentation is organized as follows:
@@ -37,6 +45,7 @@ Initial implementation complete. The project continues to evolve through increme
 - **2026-07-30** — Added pipeline validation for downloads and extractions, split history files, artifact saving (raw HTML, extraction/ranking JSON), externalized AI prompts, improved ranking output, and CLI options `--skip-resume` and `--max N`.
 - **2026-07-29** — Enabled OpenAI Responses API logging (`store=true`) and fixed company page link normalization for query/fragment hrefs.
 - **2026-07-28** — Completed first development cycle: search, download, extraction, ranking, history, resume integration, and CLI.
+
 
 ### Implementation with Cursor
 
