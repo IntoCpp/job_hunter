@@ -2,7 +2,7 @@
 
 **Project:** Job-Hunter
 
-**Version:** 0.8
+**Version:** 0.9
 
 ---
 
@@ -52,18 +52,14 @@ The project is designed around the following principles:
 
 * OpenAI Agents SDK
 
-## Search
-
-* Serper API (Google search provider for v1)
-
 ## Browser Automation
 
-* Playwright (fallback when HTTP extraction is insufficient)
+* Playwright (fallback when HTTP download is insufficient)
 
 ## Credentials
 
 * `.env` file at project root (excluded from version control)
-* Expected keys: `OPENAI_API_KEY`, `SERPER_API_KEY`
+* Expected keys: `OPENAI_API_KEY`
 
 ## Future Technologies
 
@@ -84,8 +80,8 @@ The architecture shall nevertheless allow these technologies to be introduced la
                            │
               ┌────────────┴────────────┐
               │                         │
-    Job Search Profile Tool      Search Tools
-      (generate / load cache)   (company / board / Serper)
+    Job Search Profile Tool    Job Postings File
+      (generate / load cache)   (company + URL list)
               │                         │
               └────────────┬────────────┘
                            │
@@ -116,8 +112,8 @@ search_profile.job_search_preferences.file          │
                                                     │
                               ┌─────────────────────┼─────────────────────┐
                               ▼                     ▼                     ▼
-                        Search Tool           Download Tool         Ranking Tool
-              (profile + preferences)       (URL → content)   (profile + preferences)
+                     Job List Loader         Download Tool         Ranking Tool
+                   (job_postings_file)       (URL → content)   (profile + preferences)
                               │                     │                     │
                               └─────────────────────┼─────────────────────┘
                                                     ▼
@@ -203,9 +199,7 @@ Each capability shall exist as an independent module with a clearly defined inte
 Examples:
 
 * Generate job search profile (AI-derived search criteria)
-* Search company websites
-* Search job boards
-* Search Internet (Serper)
+* Load user job postings file
 * Download job postings
 * Extract job information
 * Rank postings
@@ -306,7 +300,7 @@ This allows the user to review and manually edit the profile before a full run.
 
 ### Consumption
 
-The JobHunter Agent, Search Tool, and Ranking Tool consume the loaded profile **and** user job search preferences. Manually maintained job title lists in configuration are not used.
+The JobHunter Agent and Ranking Tool consume the loaded profile **and** user job search preferences.
 
 ## 8.1.1 User Job Search Preferences
 
@@ -315,36 +309,23 @@ Loaded from the path configured in `search_profile.job_search_preferences.file` 
 Responsibilities (`preferences_service.py`):
 
 * Load and validate the YAML preferences file.
-* Provide preferred, acceptable, and excluded roles to search and ranking.
+* Provide preferred, acceptable, and excluded roles to ranking.
 * Serialize preferences for LLM ranking prompts.
 
 The preferences file must exist at startup. It is user-maintained and never overwritten by the system.
 
-## 8.2 Search Tool
+## 8.2 Job Postings Loader
 
-Responsible for discovering possible job posting URLs using criteria from the job search profile.
+Loads the user-provided YAML file configured via `job_postings_file`.
 
-A single high-level search tool coordinates separate provider implementations:
+Each entry contains:
 
-| Provider | Strategy |
-|----------|----------|
-| `SerperSearchProvider` | Google search via Serper API; queries built from profile titles, skills, and locations |
-| `CompanyWebsiteProvider` | Direct HTTP or browser automation on company career pages |
-| `JobBoardProvider` | Site-restricted search queries via Serper (e.g. `site:linkedin.com "<title from profile>" Montreal`) |
+* `company` — authoritative company name preserved through the pipeline
+* `url` — job posting URL to download and process
 
-Search queries shall be derived from the job search profile (target titles, equivalent titles, skills, locations) **and** user preferences (preferred and acceptable roles), with user preference titles taking precedence when building query title lists.
+The path may be overridden per run with `--url-postings <FILE_PATH>`.
 
-Providers are interchangeable behind a common interface. Future providers (Bing, Brave, MCP services) can be added without changing orchestration.
-
-### Discovery vs. Download
-
-Search tools are responsible for **discovery only** — finding job posting URLs.
-
-Content retrieval is handled separately by the Download Tool (Section 8.4):
-
-1. **Discovery** — Serper (or configured search provider) finds posting URLs.
-2. **Download** — HTTP request to the discovered URL (preferred).
-3. **Fallback** — Playwright when HTTP is insufficient (JavaScript-rendered or dynamic pages).
+Implemented in `job_list_service.py`. Sample format: `config/jobs_to_process.yaml.example`.
 
 ## 8.3 Browser Automation Tool
 
@@ -358,14 +339,14 @@ Implemented behind a dedicated tool interface to allow future replacement (inclu
 
 ## 8.4 Download Tool
 
-Retrieves job posting content from a discovered URL.
+Retrieves job posting content from a user-provided URL.
 
 Strategy:
 
 1. HTTP request (preferred)
 2. Playwright browser automation (fallback for JavaScript-rendered or dynamic pages)
 
-Input: URL (from search/discovery phase)
+Input: URL from the job postings file
 
 Output: Retrieved page content
 
@@ -542,7 +523,7 @@ Load User Job Search Preferences (my_job_preferences.yaml)
 
 ↓
 
-Search (company sites, job boards, Serper — using profile + preferences)
+Load Job Postings (job_postings_file)
 
 ↓
 
@@ -817,6 +798,7 @@ The following principles guide implementation:
 # ── Paths ──────────────────────────────────────────────────────────
 posting_output: "C:\\Users\\ERIC\\Documents\\job_hunter_finds\\"
 posting_history: "C:\\Users\\ERIC\\Documents\\job_hunter_finds\\posting_history.yaml"
+job_postings_file: "./config/jobs_to_process.yaml"
 
 # ── Job search profile (AI-generated cache) ──────────────────────
 search_profile:
@@ -838,7 +820,6 @@ confidence_resume: 0.90
 
 # ── AI models (OpenAI model identifiers) ─────────────────────────
 models:
-  agent: "gpt-4o-mini"        # Reserved for JobHunter Agent orchestration (future agent-driven workflow steps)
   profile: "gpt-4o-mini"      # Analyzes resume input files and generates job_search_profile.yaml
   ranking: "gpt-4o"           # Scores each posting 0.00–1.00 for resume/job fit; use a capable model for accuracy
   location: "gpt-4o-mini"     # Decides whether a posting location matches configured acceptable areas
@@ -849,28 +830,6 @@ locations:
     guidance: "Montreal and surrounding areas accessible by public transport or reasonable commute"
   - name: "South Shore"
     guidance: "Longueuil, Brossard, Saint-Hubert, and nearby cities"
-
-# ── Search sources ───────────────────────────────────────────────
-web_sites:
-  companies:
-    # Full URL — career site root or filtered sub-page
-    - url: "https://emploi.hydroquebec.com/go/Technologies-information-et-communications/2661617/"
-  job_boards:
-    - name: "LinkedIn"
-      domain: "linkedin.com"
-    - name: "Indeed"
-      domain: "ca.indeed.com"
-    - name: "Workday"
-      domain: "myworkdayjobs.com"
-    - name: "Greenhouse"
-      domain: "greenhouse.io"
-    # Optional url: fetch a specific listing page directly in addition to site: search
-    # - name: "Custom board"
-    #   url: "https://example.com/jobs/engineering"
-
-# ── Search provider ──────────────────────────────────────────────
-search:
-  provider: serper                # v1: Serper (Google); future: bing, brave, mcp
 ```
 
 ### CLI Override
@@ -892,7 +851,7 @@ uv run job-hunter --generate-job-search-profile
 
 # 18. Job Search Profile YAML Schema
 
-The generated cache file (`job_search_profile.yaml`) is produced by the Job Search Profile Tool and consumed by the JobHunter Agent, Search Tool, and Ranking Tool.
+The generated cache file (`job_search_profile.yaml`) is produced by the Job Search Profile Tool and consumed by the JobHunter Agent and Ranking Tool.
 
 The exact structure may evolve as the LLM output is refined, but the profile shall include the following categories of information:
 
@@ -957,7 +916,7 @@ Deprecated for job-search role preferences. Use `my_job_preferences.yaml` instea
 
 # 20. User Job Search Preferences YAML Schema
 
-The user-maintained preferences file (`my_job_preferences.yaml`) is loaded at runtime and consumed by the Search Tool and Ranking Tool. It is separate from the AI-generated `job_search_profile.yaml`.
+The user-maintained preferences file (`my_job_preferences.yaml`) is loaded at runtime and consumed by the Ranking Tool. It is separate from the AI-generated `job_search_profile.yaml`.
 
 ### Expected Fields
 
@@ -1088,7 +1047,6 @@ Stored in `.env` at project root (gitignored):
 
 ```text
 OPENAI_API_KEY=sk-...
-SERPER_API_KEY=...
 ```
 
 Loaded at application startup. Never committed to version control.

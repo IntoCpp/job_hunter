@@ -2,43 +2,29 @@
 
 **Project:** Job-Hunter
 
-**Version:** 1.6
+**Version:** 1.7
 
 ---
 
 # 1. Project Goal
 
-The goal of this project is to scan the Internet for job postings that best match a candidate's resume and career objectives.
+The goal of this project is to process user-provided job posting URLs and rank them against a candidate's resume and career objectives.
 
-The system uses AI agents and specialized tools to discover, analyze, rank, and save job postings. High-confidence matches may automatically trigger the existing resume customization script.
+The system uses AI-assisted tools to download, extract, validate, analyze, rank, and save job postings. High-confidence matches may automatically trigger the existing resume customization script.
 
 ---
 
 # 2. Project Description
 
-The project uses AI agents and tools to search multiple sources for job postings, including:
+The user supplies a YAML file listing job postings to process (company name and URL). The application downloads each posting, extracts structured information, validates the result, ranks it against the candidate profile, and saves the outcome.
 
-* Company career websites
-* Job boards
-* Internet search engines
-* Future search sources
+Job search criteria are not manually maintained for ranking. An AI agent analyzes the user's resume information and related input files to generate a structured **job search profile**, which is cached and consumed by the JobHunter Agent for filtering and ranking.
 
-The discovered postings are analyzed and ranked according to how well they match the candidate's profile.
+Automatic Internet search, job-board discovery, and company-site crawling are **out of scope**. The user is responsible for finding posting URLs.
 
-Job search criteria are not manually maintained. An AI agent analyzes the user's resume information and related input files to generate a structured **job search profile**, which is cached and consumed by the JobHunter Agent for discovery, filtering, and ranking.
+### Download Strategy
 
-For version 1, Internet search shall use **Serper** as the Google search provider. The search provider must be implemented behind an abstraction so it can be replaced later by another API, MCP service, or provider.
-
-The system shall be designed so that search tools (company websites, search engines, job boards, browser automation, or future MCP-backed services) are interchangeable without requiring changes to the JobHunter Agent orchestration logic.
-
-Search shall use a single high-level search tool with separate provider implementations for company websites, job boards, and search engines.
-
-### Job Discovery and Download Strategy
-
-For version 1, job posting discovery and content retrieval follow a two-phase approach:
-
-1. **Discovery** — Use Serper (or another configured search provider) to find job posting URLs. For job boards, use site-restricted search queries (e.g. `site:linkedin.com "Software Development Manager" Montreal`).
-2. **Download** — Once a URL is discovered, retrieve the job description directly using HTTP whenever possible. Fall back to Playwright only when necessary for JavaScript-rendered or dynamic pages.
+For each user-provided URL, retrieve the job description using HTTP whenever possible. Fall back to Playwright only when necessary for JavaScript-rendered or dynamic pages.
 
 ---
 
@@ -61,10 +47,9 @@ API keys and secrets shall be stored in a `.env` file at the project root.
 
 The `.env` file shall be excluded from version control.
 
-Expected credentials for version 1:
+Expected credentials:
 
-* OpenAI API key (OpenAI Agents SDK)
-* Serper API key
+* OpenAI API key
 
 ## 3.3 Output
 
@@ -108,6 +93,20 @@ posting_output/
 ---
 
 ## 3.4 Input / Output
+
+### job_postings_file
+
+Path to the YAML file listing job postings to process.
+
+Example:
+
+```yaml
+job_postings_file: "./config/jobs_to_process.yaml"
+```
+
+Each entry contains a user-provided `company` and `url`. See `config/jobs_to_process.yaml.example` for the format.
+
+The path may be overridden per run with `--url-postings <FILE_PATH>`.
 
 ### posting_history
 
@@ -219,7 +218,7 @@ Default example location: `config/my_job_preferences.yaml`
 
 This file contains **explicit user preferences** for job searching. It is separate from the AI-generated `job_search_profile.yaml` and shall not be overwritten by the system.
 
-The JobHunter Agent consumes both sources during discovery and ranking.
+The JobHunter Agent consumes both sources during ranking.
 
 #### AI-generated information (`job_search_profile.yaml`)
 
@@ -238,7 +237,7 @@ The JobHunter Agent consumes both sources during discovery and ranking.
 
 User preferences influence:
 
-* **Job discovery** — preferred and acceptable role titles are used to build search queries (together with AI profile criteria)
+* **Ranking** — preferred, acceptable, and excluded roles influence semantic scoring
 * **Deterministic filtering** — excluded roles are rejected before ranking
 * **Ranking** — the LLM considers user preferences when calculating the final confidence score
 
@@ -288,35 +287,6 @@ locations:
 ```
 
 Any posting outside the acceptable locations shall be rejected.
-
-### web_sites
-
-List of preferred search sources, including company career pages and job boards.
-
-Additional sources may be added without changing the project architecture.
-
-#### Preferred companies
-
-Examples:
-
-* https://jobsearch.alstom.com/
-* https://www.desjardins.com/qc/fr/carriere.html
-* https://www.adacel.com/careers
-* https://emploi.hydroquebec.com/
-
-#### Job boards
-
-Job boards are used as discovery sources. Posting URLs are found via site-restricted search queries through the configured search provider (Serper for v1). Content is downloaded directly from the discovered URL (HTTP first, Playwright fallback).
-
-Examples:
-
-* LinkedIn
-* Indeed
-* Workday
-* Greenhouse
-* BambooHR
-* Eightfold
-* UltiPro
 
 ### models
 
@@ -414,16 +384,14 @@ The user may edit the generated file before launching a full run. During a full 
                       │
          ┌────────────┴────────────┐
          │                         │
-  Job Search Profile        Search Tools
-  (AI cache YAML)          (company / board / Serper)
+  Job Search Profile        Job Postings File
+  (AI cache YAML)          (company + URL list)
   User Preferences                 │
   (my_job_preferences.yaml)        │
          │                         │
          └────────────┬────────────┘
                       │
-             Job Description
-                      │
-                Ranking Tool
+             Download / Extract / Rank
                       │
                High Confidence?
                       │
@@ -451,11 +419,7 @@ Before the main workflow, a separate profile-generation capability may run to pr
 3. The YAML configuration file is loaded.
 4. The job search profile is loaded from cache, or generated if the cache file does not exist (see Section 3.5).
 5. User job search preferences are loaded from `search_profile.job_search_preferences.file`.
-6. Search tools discover job posting URLs using criteria from the job search profile **and** user preferences:
-
-   * Company websites
-   * Job boards
-   * Internet search engines (via Serper)
+6. Job postings are loaded from `job_postings_file` (or `--url-postings` override).
 7. Duplicate postings are removed using the posting history. When a duplicate is found, **date last seen** is updated and further processing for that posting is skipped.
 8. Each remaining posting is downloaded (HTTP preferred; Playwright fallback for dynamic pages).
 9. Relevant information is extracted, including:

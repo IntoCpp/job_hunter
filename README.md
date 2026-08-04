@@ -1,51 +1,60 @@
 # Job-Hunter
 
-Job-Hunter is an AI-assisted Python application that searches the Internet for job postings that best match a candidate's resume and career objectives.
-
-The project discovers job postings from multiple sources, ranks them according to the candidate's profile, saves the results locally, and can automatically invoke a resume customization script for high-confidence matches.
+Job-Hunter is an AI-assisted Python application that processes user-provided job posting URLs, ranks them against a candidate profile, saves the results locally, and can automatically invoke a resume customization script for high-confidence matches.
 
 ## Documentation
 
-The project documentation is organized as follows:
+* **requirements.md** — Functional requirements and project objectives.
+* **design.md** — Software architecture and technical design.
+* **change-request.md** — Approved change requests and implementation decisions.
 
-* **requirements.md** — Functional requirements and project objectives. This document is the authoritative source for *what* the software must do.
-* **design.md** — Software architecture, design decisions, implementation strategy, and technical details. This document is the authoritative source for *how* the software is implemented.
+## Quick start
 
-## quick start
+### 1. Configure
 
-### Run the tool
+Copy `config/config.yaml.example` to `config/config.yaml` and adjust paths.
 
-First we recommend generating your job profile based you resume (and other file). Indicate where to find them in the [config.yaml](./config/config.yaml) file in section `search_profile`. This will generate your profile and save it. **Make sure to review it**, it will be used each run until you delete it. A new one is generated if not found, so if you change your resume (or other files), just delete your generated profile.
+Set `job_postings_file` to your list of postings (see `config/jobs_to_process.yaml.example`):
 
-> uv run job-hunter --generate-job-search-profile --config config/config.yaml
+```yaml
+job_postings_file: "./config/jobs_to_process.yaml"
+```
 
-Or change the prod [config.yaml](./config/config.yaml) and just run 
+### 2. Generate job search profile (first time)
 
-> uv run job-hunter --generate-job-search-profile --config config/config.yaml
+```bash
+uv run job-hunter --generate-job-search-profile --config config/config.yaml
+```
 
-### Run uinot tests
+Review the generated profile before running a full workflow.
 
-> uv run pytest -v
+### 3. Process postings
 
+```bash
+uv run job-hunter --config config/config.yaml
+```
+
+Useful options:
+
+```bash
+uv run job-hunter --test --skip-resume --config config/config.yaml
+uv run job-hunter --max 5 --config config/config.yaml
+uv run job-hunter --url-postings ./my_jobs.yaml --config config/config.yaml
+```
+
+### Run unit tests
+
+```bash
+uv run pytest -v
+```
 
 ## Status
 
-Initial implementation complete. The project continues to evolve through incremental improvements.
+Active development. Automated job search was removed in favor of user-provided URL lists.
 
 ## Change History
 
-- **2026-07-30** — Added pipeline validation for downloads and extractions, split history files, artifact saving (raw HTML, extraction/ranking JSON), externalized AI prompts, improved ranking output, and CLI options `--skip-resume` and `--max N`.
-- **2026-07-29** — Enabled OpenAI Responses API logging (`store=true`) and fixed company page link normalization for query/fragment hrefs.
-- **2026-07-28** — Completed first development cycle: search, download, extraction, ranking, history, resume integration, and CLI.
-
-### Implementation with Cursor
-
-Phase 3 will be done as a conversation plan like this:
-
-1. Project skeleton + configuration loading.
-2. Models + history storage.
-3. Search tools.
-4. Extraction.
-5. Ranking.
-6. Resume integration.
-7. Improvements.
+- **2026-08-04** — Removed automated job search (Serper, job boards, company crawling). Added `job_postings_file` input and `--url-postings` CLI option. User-provided company names are authoritative. See branch [job_search_experiment](https://github.com/IntoCpp/job_hunter/tree/job_search_experiment) for the code with web-search feature, the README contains a comment specific to the branch.
+- **2026-07-30** — Added pipeline validation, split history files, artifact saving, externalized prompts, improved ranking output, `--skip-resume`, and `--max N`.
+- **2026-07-29** — Enabled OpenAI Responses API logging and fixed company page link normalization.
+- **2026-07-28** — Initial end-to-end implementation.

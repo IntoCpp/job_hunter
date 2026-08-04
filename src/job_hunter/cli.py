@@ -23,8 +23,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="job-hunter",
         description=(
-            "Search the Internet for job postings that match a candidate profile, "
-            "rank them, and optionally trigger resume customization."
+            "Process user-provided job posting URLs, rank them against a candidate profile, "
+            "and optionally trigger resume customization."
         ),
     )
     parser.add_argument(
@@ -58,6 +58,11 @@ def build_parser() -> argparse.ArgumentParser:
         metavar="N",
         help="Stop after N new validated postings are added to accepted history",
     )
+    parser.add_argument(
+        "--url-postings",
+        metavar="FILE_PATH",
+        help="Override the configured job_postings_file path for this run",
+    )
     return parser
 
 
@@ -82,10 +87,12 @@ def main(argv: list[str] | None = None) -> int:
             agent.generate_profile_only()
             return 0
 
+        job_postings_file = Path(args.url_postings).resolve() if args.url_postings else None
         run_options = RunOptions(
             test_mode=args.test,
             skip_resume=args.skip_resume,
             max_new_postings=2 if args.test else args.max,
+            job_postings_file=job_postings_file,
         )
         agent.run(options=run_options)
         return 0

@@ -8,7 +8,7 @@ from enum import Enum
 from pathlib import Path
 
 from job_hunter.models.config import AppConfig
-from job_hunter.models.job_posting import EXTRACTION_FAILED_COMPANY, JobPosting
+from job_hunter.models.job_to_process import USER_INPUT_SOURCE, JobToProcess
 from job_hunter.models.pipeline import StageStatus
 from job_hunter.services.artifact_service import (
     save_failed_download_artifacts,
@@ -18,19 +18,15 @@ from job_hunter.services.artifact_service import (
 )
 from job_hunter.services.configuration_service import get_required_env
 from job_hunter.services.history_service import HistoryService
+from job_hunter.services.job_list_service import load_job_postings
 from job_hunter.services.llm_service import LLMService
 from job_hunter.services.page_validation_service import validate_downloaded_page
-from job_hunter.services.profile_service import ProfileService, read_input_files
 from job_hunter.services.preferences_service import load_job_search_preferences
+from job_hunter.services.profile_service import ProfileService, read_input_files
 from job_hunter.tools.download_tool import DownloadTool
 from job_hunter.tools.extraction_tool import ExtractionTool
 from job_hunter.tools.ranking_tool import RankingTool
 from job_hunter.tools.resume_tool import ResumeTool
-from job_hunter.tools.search.base import SearchResult
-from job_hunter.tools.search.company_provider import CompanyWebsiteSearchProvider
-from job_hunter.tools.search.job_board_provider import JobBoardSearchProvider
-from job_hunter.tools.search.search_tool import SearchTool
-from job_hunter.tools.search.serper_provider import SerperSearchProvider
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +46,7 @@ class RunOptions:
     test_mode: bool = False
     skip_resume: bool = False
     max_new_postings: int | None = None
+    job_postings_file: Path | None = None
 
 
 class JobHunterAgent:
@@ -61,7 +58,6 @@ class JobHunterAgent:
         *,
         profile_service: ProfileService,
         history_service: HistoryService,
-        search_tool: SearchTool,
         download_tool: DownloadTool,
         extraction_tool: ExtractionTool,
         ranking_tool: RankingTool,
@@ -71,7 +67,6 @@ class JobHunterAgent:
         self._config = config
         self._profile_service = profile_service
         self._history = history_service
-        self._search = search_tool
         self._download = download_tool
         self._extract = extraction_tool
         self._rank = ranking_tool
@@ -81,19 +76,11 @@ class JobHunterAgent:
     def from_config(cls, config: AppConfig) -> "JobHunterAgent":
         """Build agent and dependencies from application configuration."""
         openai_key = get_required_env("OPENAI_API_KEY")
-        serper_key = get_required_env("SERPER_API_KEY")
         llm = LLMService(api_key=openai_key)
-        serper = SerperSearchProvider(api_key=serper_key)
         return cls(
             config,
             profile_service=ProfileService(config, llm),
             history_service=HistoryService(config.posting_history),
-            search_tool=SearchTool(
-                config,
-                serper,
-                CompanyWebsiteSearchProvider(serper, config.web_sites),
-                JobBoardSearchProvider(serper, config.web_sites),
-            ),
             download_tool=DownloadTool(),
             extraction_tool=ExtractionTool(config, llm),
             ranking_tool=RankingTool(config, llm),
@@ -118,39 +105,47 @@ class JobHunterAgent:
         logger.info("Loading job search preferences...")
         resume_context = read_input_files(self._config.search_profile.input_files)
 
-        results = self._search.discover_urls(profile, preferences)
+        jobs_path = run_options.job_postings_file or self._config.job_postings_file
+        logger.info("Loading job postings from %s", jobs_path)
+        jobs = load_job_postings(jobs_path)
+
         new_accepted = 0
         posting_limit = 2 if run_options.test_mode else run_options.max_new_postings
 
-        for result in results:
+        for job in jobs:
             if posting_limit is not None and new_accepted >= posting_limit:
                 break
             try:
-                outcome = self._process_url(result, profile, preferences, resume_context, run_options)
+                outcome = self._process_job(job, profile, preferences, resume_context, run_options)
                 if outcome == ProcessOutcome.NEW_ACCEPTED:
                     new_accepted += 1
             except Exception:
-                logger.exception("Failed to process posting URL: %s", result.url)
+                logger.exception("Failed to process posting URL: %s", job.url)
 
         self._history.save()
         logger.info("Completed. Added %s new accepted postings.", new_accepted)
 
-    def _process_url(
+    def _process_job(
         self,
-        result: SearchResult,
+        job: JobToProcess,
         profile,
         preferences,
         resume_context: str,
         options: RunOptions,
     ) -> ProcessOutcome:
-        url = result.url
-        source = result.source
+        url = job.url
+        source = USER_INPUT_SOURCE
         logger.debug("Downloading %s", url)
         try:
             content = self._download.download(url)
         except RuntimeError as exc:
             reason = str(exc)
-            self._history.add_failed_download(url=url, failure_reason=reason, source=source, page_type="download_error")
+            self._history.add_failed_download(
+                url=url,
+                failure_reason=reason,
+                source=source,
+                page_type="download_error",
+            )
             save_failed_download_artifacts(
                 self._config.posting_output,
                 url=url,
@@ -180,9 +175,13 @@ class JobHunterAgent:
             logger.info("Skipping %s: %s", url, download_validation.failure_reason)
             return ProcessOutcome.FAILED_OR_SKIPPED
 
-        posting, extraction_payload = self._extract.extract(url=url, content=content, source=source)
+        posting, extraction_payload = self._extract.extract(
+            url=url,
+            content=content,
+            user_company=job.company,
+            source=source,
+        )
         if posting.extraction_status != StageStatus.SUCCESS:
-            posting.company = EXTRACTION_FAILED_COMPANY
             artifact_path = save_failed_extraction_artifacts(
                 self._config.posting_output,
                 url=url,
@@ -242,10 +241,7 @@ class JobHunterAgent:
         posting.markdown_path = str(markdown_path)
         self._history.add_entry(posting, markdown_path=str(markdown_path))
 
-        if (
-            not options.skip_resume
-            and posting.confidence_score >= self._config.confidence_resume
-        ):
+        if not options.skip_resume and posting.confidence_score >= self._config.confidence_resume:
             self._resume.invoke(markdown_path)
 
         logger.info("Saved posting to %s", markdown_path)

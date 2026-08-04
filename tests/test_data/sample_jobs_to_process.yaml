@@ -1,0 +1,6 @@
+jobs:
+  - company: "Example Corp"
+    url: "https://example.com/jobs/1"
+
+  - company: "Another Corp"
+    url: "https://example.com/jobs/2"

@@ -11,25 +11,16 @@ from job_hunter.models.config import (
     JobSearchPreferencesConfig,
     ModelConfig,
     ResumeReworkConfig,
-    SearchConfig,
     SearchProfileConfig,
-    WebSitesConfig,
 )
 from job_hunter.models.job_posting import JobPosting
 from job_hunter.models.job_search_preferences import JobSearchPreferences, PreferredRole, RolePreference
 from job_hunter.models.job_search_profile import JobSearchProfile
-from job_hunter.services.filtering_service import is_excluded_posting
-from job_hunter.services.preferences_service import (
-    build_search_titles,
-    format_preferences_for_prompt,
-    load_job_search_preferences,
-)
-from job_hunter.services.configuration_service import load_config
-from job_hunter.tools.search.search_tool import SearchTool
+from job_hunter.models.job_to_process import JobToProcess, USER_INPUT_SOURCE
 from job_hunter.models.pipeline import RankingResult, StageStatus
-from job_hunter.tools.search.base import SearchResult
-from job_hunter.tools.search.company_provider import CompanyWebsiteSearchProvider
-from job_hunter.tools.search.job_board_provider import JobBoardSearchProvider
+from job_hunter.services.configuration_service import load_config
+from job_hunter.services.filtering_service import is_excluded_posting
+from job_hunter.services.preferences_service import format_preferences_for_prompt, load_job_search_preferences
 
 
 def test_load_valid_preferences_file() -> None:
@@ -56,19 +47,6 @@ def test_load_invalid_preferences_file(tmp_path: Path) -> None:
 
     with pytest.raises(ValueError, match="preferred_roles must be a list"):
         load_job_search_preferences(invalid)
-
-
-def test_build_search_titles_prefers_user_roles() -> None:
-    """User preference titles appear before AI profile titles in search queries."""
-    preferences = JobSearchPreferences(
-        preferred_roles=[PreferredRole(title="QA Manager", priority=1)],
-        acceptable_roles=[RolePreference(title="Team Lead")],
-    )
-    profile_titles = ["Engineering Manager", "QA Manager"]
-
-    titles = build_search_titles(profile_titles, preferences)
-
-    assert titles == ["QA Manager", "Team Lead", "Engineering Manager"]
 
 
 def test_excluded_role_from_preferences_is_filtered() -> None:
@@ -100,6 +78,7 @@ def test_load_config_requires_preferences_file(tmp_path: Path) -> None:
         """
 posting_output: "out"
 posting_history: "history.yaml"
+job_postings_file: "jobs.yaml"
 search_profile:
   input_files: ["resume.md"]
   output_file: "profile.yaml"
@@ -126,6 +105,7 @@ def _agent_config(tmp_path: Path) -> AppConfig:
     return AppConfig(
         posting_output=tmp_path / "output",
         posting_history=tmp_path / "history.yaml",
+        job_postings_file=Path("tests/test_data/sample_jobs_to_process.yaml"),
         search_profile=SearchProfileConfig(
             input_files=[tmp_path / "resume.md"],
             output_file=tmp_path / "profile.yaml",
@@ -133,22 +113,22 @@ def _agent_config(tmp_path: Path) -> AppConfig:
         ),
         resume_rework=ResumeReworkConfig(script_path=tmp_path / "resume_rework.py", working_directory=tmp_path),
         confidence_resume=0.9,
-        models=ModelConfig("a", "b", "c", "d", "e"),
+        models=ModelConfig("profile", "ranking", "location", "extraction"),
         locations=[],
-        web_sites=WebSitesConfig(),
-        search=SearchConfig(provider="serper"),
         config_path=tmp_path / "config.yaml",
     )
 
 
+@patch("job_hunter.agent.orchestrator.load_job_postings")
 @patch("job_hunter.agent.orchestrator.save_success_artifacts")
 @patch("job_hunter.agent.orchestrator.validate_downloaded_page")
-def test_agent_run_passes_preferences_to_search_and_ranking(
+def test_agent_run_passes_preferences_to_ranking(
     mock_validate: MagicMock,
     mock_save_artifacts: MagicMock,
+    mock_load_jobs: MagicMock,
     tmp_path: Path,
 ) -> None:
-    """Workflow loads preferences and passes them to search and ranking tools."""
+    """Workflow loads preferences and passes them to ranking tools."""
     config = _agent_config(tmp_path)
     (tmp_path / "resume.md").write_text("# Resume", encoding="utf-8")
     profile = JobSearchProfile(target_titles=["Manager"])
@@ -158,7 +138,9 @@ def test_agent_run_passes_preferences_to_search_and_ranking(
         location="Montreal",
         url="https://example.com/job/1",
         description="Lead software development teams with responsibilities and qualifications.",
+        source=USER_INPUT_SOURCE,
     )
+    mock_load_jobs.return_value = [JobToProcess(company="Example Corp", url="https://example.com/job/1")]
     mock_validate.return_value = MagicMock(status=StageStatus.SUCCESS)
     mock_save_artifacts.return_value = tmp_path / "output" / "posting.md"
 
@@ -166,8 +148,6 @@ def test_agent_run_passes_preferences_to_search_and_ranking(
     profile_service.load_or_generate.return_value = profile
     history = MagicMock()
     history.is_duplicate.return_value = False
-    search = MagicMock()
-    search.discover_urls.return_value = [SearchResult(url="https://example.com/job/1", source="serper")]
     download = MagicMock()
     download.download.return_value = "<html>job description responsibilities qualifications apply now</html>" * 20
     extract = MagicMock()
@@ -181,7 +161,6 @@ def test_agent_run_passes_preferences_to_search_and_ranking(
         config,
         profile_service=profile_service,
         history_service=history,
-        search_tool=search,
         download_tool=download,
         extraction_tool=extract,
         ranking_tool=rank,
@@ -190,30 +169,7 @@ def test_agent_run_passes_preferences_to_search_and_ranking(
 
     agent.run(options=RunOptions(test_mode=True))
 
-    search.discover_urls.assert_called_once()
-    assert isinstance(search.discover_urls.call_args.args[1], JobSearchPreferences)
     rank.should_process.assert_called_once()
     assert isinstance(rank.should_process.call_args.args[2], JobSearchPreferences)
     rank.rank.assert_called_once()
     assert isinstance(rank.rank.call_args.args[3], JobSearchPreferences)
-
-
-def test_search_tool_uses_preference_titles() -> None:
-    """Search tool builds queries from combined profile and preference titles."""
-    config = MagicMock()
-    config.locations = []
-    serper = MagicMock()
-    serper.discover.return_value = []
-    company = MagicMock(spec=CompanyWebsiteSearchProvider)
-    company.discover_for_profile.return_value = []
-    board = MagicMock(spec=JobBoardSearchProvider)
-    board.discover_for_profile.return_value = []
-
-    tool = SearchTool(config, serper, company, board)
-    profile = JobSearchProfile(target_titles=["Engineering Manager"])
-    preferences = JobSearchPreferences(preferred_roles=[PreferredRole(title="QA Manager", priority=1)])
-
-    tool.discover_urls(profile, preferences)
-
-    queries = serper.discover.call_args.args[0]
-    assert any("QA Manager" in query for query in queries)

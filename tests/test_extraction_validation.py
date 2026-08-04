@@ -8,9 +8,7 @@ from job_hunter.models.config import (
     JobSearchPreferencesConfig,
     ModelConfig,
     ResumeReworkConfig,
-    SearchConfig,
     SearchProfileConfig,
-    WebSitesConfig,
 )
 from job_hunter.models.pipeline import StageStatus
 from job_hunter.tools.extraction_tool import ExtractionTool
@@ -21,6 +19,7 @@ def _config(tmp_path: Path) -> AppConfig:
     return AppConfig(
         posting_output=tmp_path,
         posting_history=tmp_path / "history.yaml",
+        job_postings_file=tmp_path / "jobs.yaml",
         search_profile=SearchProfileConfig(
             input_files=[],
             output_file=tmp_path / "profile.yaml",
@@ -28,16 +27,14 @@ def _config(tmp_path: Path) -> AppConfig:
         ),
         resume_rework=ResumeReworkConfig(script_path=tmp_path / "script.py", working_directory=tmp_path),
         confidence_resume=0.9,
-        models=ModelConfig("a", "b", "c", "d", "e"),
+        models=ModelConfig("profile", "ranking", "location", "extraction"),
         locations=[],
-        web_sites=WebSitesConfig(),
-        search=SearchConfig(provider="serper"),
         config_path=tmp_path / "config.yaml",
     )
 
 
 def test_extraction_marks_missing_required_fields_as_failed(tmp_path: Path) -> None:
-    """Extraction fails when company, title, or description are missing."""
+    """Extraction fails when title or description are missing while preserving user company."""
     llm = MagicMock()
     llm.complete_json.return_value = {
         "company": None,
@@ -49,11 +46,40 @@ def test_extraction_marks_missing_required_fields_as_failed(tmp_path: Path) -> N
     }
     tool = ExtractionTool(_config(tmp_path), llm)
 
-    posting, payload = tool.extract(url="https://example.com/job", content="<html>job</html>" * 50)
+    posting, payload = tool.extract(
+        url="https://example.com/job",
+        content="<html>job</html>" * 50,
+        user_company="Example Corp",
+    )
 
     assert posting.extraction_status == StageStatus.FAILED
-    assert "company" in posting.extraction_failure_reason
+    assert posting.company == "Example Corp"
+    assert "description" in posting.extraction_failure_reason
     assert payload["extraction_status"] == StageStatus.FAILED.value
+
+
+def test_extraction_stores_extracted_company_metadata(tmp_path: Path) -> None:
+    """Extracted company is stored separately when it differs from user input."""
+    llm = MagicMock()
+    llm.complete_json.return_value = {
+        "company": "Example Corp Inc.",
+        "title": "Software Development Manager",
+        "location": "Montreal",
+        "address": "",
+        "description": "Lead software teams with responsibilities and qualifications.",
+        "language": "en",
+    }
+    tool = ExtractionTool(_config(tmp_path), llm)
+
+    posting, payload = tool.extract(
+        url="https://example.com/job",
+        content="<html>job</html>" * 50,
+        user_company="Example Corporation",
+    )
+
+    assert posting.company == "Example Corporation"
+    assert posting.extracted_company == "Example Corp Inc."
+    assert payload["extracted_company"] == "Example Corp Inc."
 
 
 def test_ranking_refuses_incomplete_posting(tmp_path: Path) -> None:
@@ -64,7 +90,7 @@ def test_ranking_refuses_incomplete_posting(tmp_path: Path) -> None:
 
     posting = JobPosting(
         title="Software Development Manager",
-        company="Unknown Company",
+        company="Example Corp",
         location="Montreal",
         url="https://example.com/job",
         description="",

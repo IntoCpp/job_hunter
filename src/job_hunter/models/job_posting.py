@@ -11,7 +11,6 @@ SUPPORTED_LANGUAGES = frozenset({"en", "fr"})
 UNKNOWN_COMPANY = "Unknown Company"
 UNKNOWN_TITLE = "Unknown Title"
 UNKNOWN_LOCATION = "Unknown Location"
-EXTRACTION_FAILED_COMPANY = "Extraction Failed"
 PLACEHOLDER_VALUES = frozenset(
     {
         "",
@@ -78,6 +77,7 @@ class JobPosting:
     extraction_status: StageStatus = StageStatus.SUCCESS
     extraction_failure_reason: str = ""
     source: str = ""
+    extracted_company: str = ""
 
     def has_required_fields(self) -> bool:
         """Return True when company, title, and description are present."""

@@ -7,13 +7,13 @@ from typing import Any
 
 from job_hunter.models.config import AppConfig
 from job_hunter.models.job_posting import (
-    UNKNOWN_COMPANY,
     UNKNOWN_LOCATION,
     UNKNOWN_TITLE,
     JobPosting,
     is_present_field,
     normalize_language,
 )
+from job_hunter.models.job_to_process import USER_INPUT_SOURCE
 from job_hunter.models.pipeline import StageStatus
 from job_hunter.services.llm_service import LLMService
 from job_hunter.services.prompt_service import load_prompt
@@ -34,13 +34,21 @@ class ExtractionTool:
         self._config = config
         self._llm = llm_service
 
-    def extract(self, *, url: str, content: str, source: str = "") -> tuple[JobPosting, dict[str, Any]]:
+    def extract(
+        self,
+        *,
+        url: str,
+        content: str,
+        user_company: str,
+        source: str = USER_INPUT_SOURCE,
+    ) -> tuple[JobPosting, dict[str, Any]]:
         """Extract posting fields from raw page content.
 
         Parameters:
             url: Source URL.
             content: Downloaded page content.
-            source: Search source identifier.
+            user_company: Authoritative company name from the user job list.
+            source: History source identifier.
 
         Returns:
             Tuple of extracted posting and extraction JSON payload.
@@ -52,9 +60,10 @@ class ExtractionTool:
             system_prompt=load_prompt("extract_posting"),
             user_prompt=f"URL: {url}\n\nCONTENT:\n{clipped}",
         )
+        extracted_company = _clean_field(raw_data.get("company"))
         posting = JobPosting(
             title=_clean_field(raw_data.get("title"), fallback=UNKNOWN_TITLE),
-            company=_clean_field(raw_data.get("company"), fallback=UNKNOWN_COMPANY),
+            company=user_company.strip(),
             location=_clean_field(raw_data.get("location"), fallback=UNKNOWN_LOCATION),
             address=_clean_field(raw_data.get("address")),
             description=_clean_field(raw_data.get("description")),
@@ -62,6 +71,7 @@ class ExtractionTool:
             url=url,
             raw_content=content,
             source=source,
+            extracted_company=extracted_company,
         )
         extraction_payload = _build_extraction_payload(posting, raw_data)
         posting, extraction_payload = self._apply_validation(posting, extraction_payload)
@@ -107,7 +117,7 @@ def _clean_field(value: object, *, fallback: str = "") -> str:
 
 
 def _build_extraction_payload(posting: JobPosting, raw_data: dict[str, Any]) -> dict[str, Any]:
-    return {
+    payload = {
         "company": posting.company,
         "title": posting.title,
         "location": posting.location,
@@ -120,3 +130,6 @@ def _build_extraction_payload(posting: JobPosting, raw_data: dict[str, Any]) -> 
         "extraction_status": posting.extraction_status.value,
         "failure_reason": posting.extraction_failure_reason,
     }
+    if posting.extracted_company:
+        payload["extracted_company"] = posting.extracted_company
+    return payload

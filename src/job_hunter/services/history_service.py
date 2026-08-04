@@ -10,7 +10,7 @@ from pathlib import Path
 import yaml
 
 from job_hunter.models.history import PostingHistoryEntry, normalize_history_field
-from job_hunter.models.job_posting import EXTRACTION_FAILED_COMPANY, UNKNOWN_COMPANY, JobPosting
+from job_hunter.models.job_posting import UNKNOWN_COMPANY, JobPosting
 
 logger = logging.getLogger(__name__)
 
@@ -288,6 +288,8 @@ def _build_metadata(posting: JobPosting) -> dict[str, str]:
         "extraction_status": posting.extraction_status.value,
         "source": posting.source,
     }
+    if posting.extracted_company and posting.extracted_company != posting.company:
+        metadata["extracted_company"] = posting.extracted_company
     if posting.language:
         metadata["language"] = posting.language
     if posting.extraction_failure_reason:

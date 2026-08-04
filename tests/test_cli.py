@@ -29,6 +29,13 @@ def test_parser_skip_resume_and_max_flags() -> None:
     assert args.max == 5
 
 
+def test_parser_url_postings_flag() -> None:
+    """URL postings override flag is accepted."""
+    parser = build_parser()
+    args = parser.parse_args(["--url-postings", "config/jobs_to_process.yaml"])
+    assert args.url_postings == "config/jobs_to_process.yaml"
+
+
 def test_parser_custom_config() -> None:
     """Custom config path is accepted."""
     parser = build_parser()

@@ -8,9 +8,7 @@ from job_hunter.models.config import (
     JobSearchPreferencesConfig,
     ModelConfig,
     ResumeReworkConfig,
-    SearchConfig,
     SearchProfileConfig,
-    WebSitesConfig,
 )
 from job_hunter.models.job_posting import JobPosting, normalize_language
 from job_hunter.services.history_service import HistoryService
@@ -32,6 +30,7 @@ def test_extraction_tool_preserves_language(tmp_path: Path) -> None:
     config = AppConfig(
         posting_output=tmp_path,
         posting_history=tmp_path / "history.yaml",
+        job_postings_file=tmp_path / "jobs.yaml",
         search_profile=SearchProfileConfig(
             input_files=[],
             output_file=tmp_path / "profile.yaml",
@@ -39,10 +38,8 @@ def test_extraction_tool_preserves_language(tmp_path: Path) -> None:
         ),
         resume_rework=ResumeReworkConfig(script_path=tmp_path / "script.py", working_directory=tmp_path),
         confidence_resume=0.9,
-        models=ModelConfig("a", "b", "c", "d", "e"),
+        models=ModelConfig("profile", "ranking", "location", "extraction"),
         locations=[],
-        web_sites=WebSitesConfig(),
-        search=SearchConfig(provider="serper"),
         config_path=tmp_path / "config.yaml",
     )
     llm = MagicMock()
@@ -56,10 +53,15 @@ def test_extraction_tool_preserves_language(tmp_path: Path) -> None:
     }
     tool = ExtractionTool(config, llm)
 
-    posting, _payload = tool.extract(url="https://example.com/job", content="<html>offre</html>" * 50)
+    posting, _payload = tool.extract(
+        url="https://example.com/job",
+        content="<html>offre</html>" * 50,
+        user_company="Hydro-Québec",
+    )
 
     assert posting.language == "fr"
     assert posting.title == "Directeur de développement logiciel"
+    assert posting.company == "Hydro-Québec"
     assert "livraison" in posting.description
 
 

@@ -1,0 +1,12 @@
+# User-provided job postings to process.
+# Copy to a working file and update paths in config.yaml (job_postings_file).
+
+jobs:
+  - company: "Example Corporation"
+    url: "https://example.com/careers/software-development-manager"
+
+  - company: "Another Company"
+    url: "https://another-company.com/jobs/senior-software-lead"
+
+  - company: "Government Organization"
+    url: "https://government.example/jobs/team-lead"

@@ -10,15 +10,11 @@ from dotenv import load_dotenv
 
 from job_hunter.models.config import (
     AppConfig,
-    CompanySite,
-    JobBoard,
     JobSearchPreferencesConfig,
     LocationConfig,
     ModelConfig,
     ResumeReworkConfig,
-    SearchConfig,
     SearchProfileConfig,
-    WebSitesConfig,
 )
 
 
@@ -50,19 +46,6 @@ def _resolve_path(value: str, base_dir: Path) -> Path:
     if path.is_absolute():
         return path
     return (base_dir / path).resolve()
-
-
-def _parse_job_board(item: object) -> JobBoard:
-    if not isinstance(item, dict):
-        raise ValueError("Each job_board entry must be a mapping")
-    name = str(item.get("name", "")).strip()
-    domain = str(item.get("domain", "")).strip()
-    url = str(item.get("url", "")).strip()
-    if not name:
-        raise ValueError("Each job_board entry requires a name")
-    if not domain and not url:
-        raise ValueError(f"Job board '{name}' requires domain or url")
-    return JobBoard(name=name, domain=domain, url=url)
 
 
 def load_config(config_path: Path) -> AppConfig:
@@ -101,13 +84,17 @@ def load_config(config_path: Path) -> AppConfig:
     if not preferences_file.exists():
         raise FileNotFoundError(f"Job search preferences file not found: {preferences_file}")
 
+    if not str(data.get("job_postings_file", "")).strip():
+        raise ValueError("job_postings_file is required")
+    job_postings_file = _resolve_path(str(data.get("job_postings_file", "")), base_dir)
+
     resume_rework_data = data.get("resume_rework") or {}
     models_data = data.get("models") or {}
-    web_sites_data = data.get("web_sites") or {}
 
     return AppConfig(
         posting_output=_resolve_path(str(data.get("posting_output", "")), base_dir),
         posting_history=_resolve_path(str(data.get("posting_history", "")), base_dir),
+        job_postings_file=job_postings_file,
         search_profile=SearchProfileConfig(
             input_files=input_files,
             output_file=output_file,
@@ -119,7 +106,6 @@ def load_config(config_path: Path) -> AppConfig:
         ),
         confidence_resume=float(data.get("confidence_resume", 0.9)),
         models=ModelConfig(
-            agent=str(models_data.get("agent", "gpt-4o-mini")),
             profile=str(models_data.get("profile", "gpt-4o-mini")),
             ranking=str(models_data.get("ranking", "gpt-4o")),
             location=str(models_data.get("location", "gpt-4o-mini")),
@@ -129,10 +115,5 @@ def load_config(config_path: Path) -> AppConfig:
             LocationConfig(name=str(item.get("name", "")), guidance=str(item.get("guidance", "")))
             for item in data.get("locations", [])
         ],
-        web_sites=WebSitesConfig(
-            companies=[CompanySite(url=str(item.get("url", ""))) for item in web_sites_data.get("companies", [])],
-            job_boards=[_parse_job_board(item) for item in web_sites_data.get("job_boards", [])],
-        ),
-        search=SearchConfig(provider=str((data.get("search") or {}).get("provider", "serper"))),
         config_path=config_path.resolve(),
     )

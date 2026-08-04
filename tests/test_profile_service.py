@@ -10,9 +10,7 @@ from job_hunter.models.config import (
     JobSearchPreferencesConfig,
     ModelConfig,
     ResumeReworkConfig,
-    SearchConfig,
     SearchProfileConfig,
-    WebSitesConfig,
 )
 from job_hunter.models.job_search_profile import JobSearchProfile
 from job_hunter.services.profile_service import ProfileService
@@ -25,6 +23,7 @@ def _config(tmp_path: Path) -> AppConfig:
     return AppConfig(
         posting_output=tmp_path / "output",
         posting_history=tmp_path / "history.yaml",
+        job_postings_file=tmp_path / "jobs.yaml",
         search_profile=SearchProfileConfig(
             input_files=[input_file],
             output_file=output_file,
@@ -32,10 +31,8 @@ def _config(tmp_path: Path) -> AppConfig:
         ),
         resume_rework=ResumeReworkConfig(script_path=tmp_path / "script.py", working_directory=tmp_path),
         confidence_resume=0.9,
-        models=ModelConfig("a", "b", "c", "d", "e"),
+        models=ModelConfig("profile", "ranking", "location", "extraction"),
         locations=[],
-        web_sites=WebSitesConfig(),
-        search=SearchConfig(provider="serper"),
         config_path=tmp_path / "config.yaml",
     )
 

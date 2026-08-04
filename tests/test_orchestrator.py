@@ -9,14 +9,12 @@ from job_hunter.models.config import (
     JobSearchPreferencesConfig,
     ModelConfig,
     ResumeReworkConfig,
-    SearchConfig,
     SearchProfileConfig,
-    WebSitesConfig,
 )
 from job_hunter.models.job_posting import JobPosting
 from job_hunter.models.job_search_profile import JobSearchProfile
+from job_hunter.models.job_to_process import USER_INPUT_SOURCE, JobToProcess
 from job_hunter.models.pipeline import RankingResult, StageStatus
-from job_hunter.tools.search.base import SearchResult
 
 
 def _config(tmp_path: Path) -> AppConfig:
@@ -25,6 +23,7 @@ def _config(tmp_path: Path) -> AppConfig:
     return AppConfig(
         posting_output=tmp_path / "output",
         posting_history=tmp_path / "history.yaml",
+        job_postings_file=Path("tests/test_data/sample_jobs_to_process.yaml"),
         search_profile=SearchProfileConfig(
             input_files=[tmp_path / "resume.md"],
             output_file=tmp_path / "profile.yaml",
@@ -32,10 +31,8 @@ def _config(tmp_path: Path) -> AppConfig:
         ),
         resume_rework=ResumeReworkConfig(script_path=tmp_path / "resume_rework.py", working_directory=tmp_path),
         confidence_resume=0.9,
-        models=ModelConfig("a", "b", "c", "d", "e"),
+        models=ModelConfig("profile", "ranking", "location", "extraction"),
         locations=[],
-        web_sites=WebSitesConfig(),
-        search=SearchConfig(provider="serper"),
         config_path=tmp_path / "config.yaml",
     )
 
@@ -50,11 +47,17 @@ def _valid_job_html() -> str:
     ) * 3
 
 
+def _sample_job() -> JobToProcess:
+    return JobToProcess(company="Example Corp", url="https://example.com/job/1")
+
+
+@patch("job_hunter.agent.orchestrator.load_job_postings")
 @patch("job_hunter.agent.orchestrator.save_success_artifacts")
 @patch("job_hunter.agent.orchestrator.validate_downloaded_page")
 def test_agent_run_processes_posting(
     mock_validate: MagicMock,
     mock_save_artifacts: MagicMock,
+    mock_load_jobs: MagicMock,
     tmp_path: Path,
 ) -> None:
     """Agent downloads, validates, extracts, ranks, saves, and updates history."""
@@ -67,8 +70,10 @@ def test_agent_run_processes_posting(
         location="Montreal",
         url="https://example.com/job/1",
         description="Lead software development teams with clear responsibilities and qualifications.",
+        source=USER_INPUT_SOURCE,
     )
     posting.confidence_score = 0.95
+    mock_load_jobs.return_value = [_sample_job()]
     mock_validate.return_value = MagicMock(status=StageStatus.SUCCESS)
     mock_save_artifacts.return_value = tmp_path / "output" / "Example Corp" / "Engineering Manager" / "posting.md"
 
@@ -76,8 +81,6 @@ def test_agent_run_processes_posting(
     profile_service.load_or_generate.return_value = profile
     history = MagicMock()
     history.is_duplicate.return_value = False
-    search = MagicMock()
-    search.discover_urls.return_value = [SearchResult(url="https://example.com/job/1", source="serper")]
     download = MagicMock()
     download.download.return_value = _valid_job_html()
     extract = MagicMock()
@@ -91,7 +94,6 @@ def test_agent_run_processes_posting(
         config,
         profile_service=profile_service,
         history_service=history,
-        search_tool=search,
         download_tool=download,
         extraction_tool=extract,
         ranking_tool=rank,
@@ -102,15 +104,27 @@ def test_agent_run_processes_posting(
 
     history.save.assert_called_once()
     history.add_entry.assert_called_once()
+    extract.extract.assert_called_once_with(
+        url="https://example.com/job/1",
+        content=download.download.return_value,
+        user_company="Example Corp",
+        source=USER_INPUT_SOURCE,
+    )
     resume.invoke.assert_called_once()
 
 
+@patch("job_hunter.agent.orchestrator.load_job_postings")
 @patch("job_hunter.agent.orchestrator.validate_downloaded_page")
-def test_agent_skips_invalid_download(mock_validate: MagicMock, tmp_path: Path) -> None:
+def test_agent_skips_invalid_download(
+    mock_validate: MagicMock,
+    mock_load_jobs: MagicMock,
+    tmp_path: Path,
+) -> None:
     """Invalid downloaded pages are recorded and skip extraction."""
     config = _config(tmp_path)
     (tmp_path / "resume.md").write_text("# Resume", encoding="utf-8")
     profile = JobSearchProfile(target_titles=["Manager"])
+    mock_load_jobs.return_value = [_sample_job()]
     mock_validate.return_value = MagicMock(
         status=StageStatus.FAILED,
         failure_reason="Cloudflare block page",
@@ -120,8 +134,6 @@ def test_agent_skips_invalid_download(mock_validate: MagicMock, tmp_path: Path) 
     profile_service = MagicMock()
     profile_service.load_or_generate.return_value = profile
     history = MagicMock()
-    search = MagicMock()
-    search.discover_urls.return_value = [SearchResult(url="https://example.com/1", source="serper")]
     download = MagicMock()
     download.download.return_value = "<html>Just a moment... cloudflare challenge-platform</html>" * 20
     extract = MagicMock()
@@ -132,7 +144,6 @@ def test_agent_skips_invalid_download(mock_validate: MagicMock, tmp_path: Path) 
         config,
         profile_service=profile_service,
         history_service=history,
-        search_tool=search,
         download_tool=download,
         extraction_tool=extract,
         ranking_tool=rank,
@@ -147,8 +158,13 @@ def test_agent_skips_invalid_download(mock_validate: MagicMock, tmp_path: Path) 
     resume.invoke.assert_not_called()
 
 
+@patch("job_hunter.agent.orchestrator.load_job_postings")
 @patch("job_hunter.agent.orchestrator.validate_downloaded_page")
-def test_agent_skips_duplicate(mock_validate: MagicMock, tmp_path: Path) -> None:
+def test_agent_skips_duplicate(
+    mock_validate: MagicMock,
+    mock_load_jobs: MagicMock,
+    tmp_path: Path,
+) -> None:
     """Duplicate postings update history and skip further processing."""
     config = _config(tmp_path)
     (tmp_path / "resume.md").write_text("# Resume", encoding="utf-8")
@@ -159,15 +175,15 @@ def test_agent_skips_duplicate(mock_validate: MagicMock, tmp_path: Path) -> None
         location="Montreal",
         url="https://example.com/1",
         description="Software development leadership role with responsibilities and qualifications.",
+        source=USER_INPUT_SOURCE,
     )
+    mock_load_jobs.return_value = [JobToProcess(company="Corp", url="https://example.com/1")]
     mock_validate.return_value = MagicMock(status=StageStatus.SUCCESS)
 
     profile_service = MagicMock()
     profile_service.load_or_generate.return_value = profile
     history = MagicMock()
     history.is_duplicate.return_value = True
-    search = MagicMock()
-    search.discover_urls.return_value = [SearchResult(url="https://example.com/1", source="serper")]
     download = MagicMock()
     download.download.return_value = _valid_job_html()
     extract = MagicMock()
@@ -179,7 +195,6 @@ def test_agent_skips_duplicate(mock_validate: MagicMock, tmp_path: Path) -> None
         config,
         profile_service=profile_service,
         history_service=history,
-        search_tool=search,
         download_tool=download,
         extraction_tool=extract,
         ranking_tool=rank,

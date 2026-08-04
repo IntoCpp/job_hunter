@@ -40,30 +40,6 @@ def load_job_search_preferences(preferences_path: Path) -> JobSearchPreferences:
     )
 
 
-def build_search_titles(profile_titles: list[str], preferences: JobSearchPreferences) -> list[str]:
-    """Combine user preference titles with AI profile titles for search queries.
-
-    Parameters:
-        profile_titles: Titles from the AI-generated job search profile.
-        preferences: User-maintained job search preferences.
-
-    Returns:
-        Deduplicated titles with user preference titles first.
-    """
-    seen: set[str] = set()
-    combined: list[str] = []
-    for title in [*preferences.search_titles(), *profile_titles]:
-        normalized = title.strip()
-        if not normalized:
-            continue
-        key = normalized.casefold()
-        if key in seen:
-            continue
-        seen.add(key)
-        combined.append(normalized)
-    return combined
-
-
 def format_preferences_for_prompt(preferences: JobSearchPreferences) -> str:
     """Serialize user preferences for LLM ranking prompts.
 

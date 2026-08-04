@@ -3,6 +3,7 @@
 
 posting_output: "C:/Users/ERIC/Documents/job_hunter_finds/"
 posting_history: "C:/Users/ERIC/Documents/job_hunter_finds/posting_history.yaml"
+job_postings_file: "./config/jobs_to_process.yaml"
 
 search_profile:
   input_files:
@@ -19,27 +20,13 @@ resume_rework:
 confidence_resume: 0.90
 
 models:
-  agent: "gpt-4o-mini"        # Reserved for JobHunter Agent orchestration (future agent-driven workflow steps)
   profile: "gpt-4o-mini"      # Analyzes resume input files and generates job_search_profile.yaml
   ranking: "gpt-4o"           # Scores each posting 0.00–1.00 for resume/job fit; use a capable model for accuracy
   location: "gpt-4o-mini"     # Decides whether a posting location matches configured acceptable areas
-  extraction: "gpt-4o-mini" # Extracts company, title, location, address, and description from posting pages
+  extraction: "gpt-4o-mini"   # Extracts company, title, location, address, and description from posting pages
 
 locations:
   - name: "Montreal Greater Area"
     guidance: "Montreal and surrounding areas accessible by public transport or reasonable commute"
   - name: "South Shore"
     guidance: "Longueuil, Brossard, Saint-Hubert, and nearby cities"
-
-web_sites:
-  companies:
-    # Full URL — site root or a filtered sub-page (e.g. IT jobs only)
-    - url: "https://emploi.hydroquebec.com/go/Technologies-information-et-communications/2661617/"
-  job_boards:
-    - name: "LinkedIn"
-      domain: "linkedin.com"
-    - name: "Indeed"
-      domain: "ca.indeed.com"
-
-search:
-  provider: serper
