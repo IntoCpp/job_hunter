@@ -36,7 +36,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--test",
         action="store_true",
-        help="Enable test mode: limit to 2 new accepted postings and enable verbose logging",
+        help="Enable test mode: use models_test, limit to 2 new accepted postings, and enable verbose logging",
     )
     parser.add_argument(
         "--verbose",
@@ -80,8 +80,10 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         load_environment()
-        config = load_config(Path(args.config))
+        config = load_config(Path(args.config), test_mode=args.test)
         setup_logging(verbose=args.verbose, log_file=default_log_file(config.posting_output))
+        model_set = "models_test" if args.test else "models_prod"
+        logger.info("Using %s model configuration", model_set)
         agent = JobHunterAgent.from_config(config)
 
         if args.generate_job_search_profile:

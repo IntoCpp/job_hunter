@@ -249,7 +249,7 @@ Future versions may introduce specialized agents.
 
 ### Model Selection
 
-Model identifiers are configuration-driven and not part of the architecture. Initial defaults use cost-effective models for most operations and a more capable model for ranking. Models may be adjusted during testing based on quality, speed, and cost.
+Model identifiers are configuration-driven and not part of the architecture. The configuration defines two model sets: `models_test` (selected when `--test` is passed) and `models_prod` (default). Each set provides `profile`, `ranking`, `location`, and `extraction` identifiers. Models may be adjusted based on quality, speed, and cost.
 
 | Use case | Model strategy |
 |----------|---------------|
@@ -819,11 +819,18 @@ resume_rework:
 confidence_resume: 0.90
 
 # ── AI models (OpenAI model identifiers) ─────────────────────────
-models:
-  profile: "gpt-4o-mini"      # Analyzes resume input files and generates job_search_profile.yaml
-  ranking: "gpt-4o"           # Scores each posting 0.00–1.00 for resume/job fit; use a capable model for accuracy
-  location: "gpt-4o-mini"     # Decides whether a posting location matches configured acceptable areas
-  extraction: "gpt-4o-mini"   # Extracts company, title, location, address, and description from posting pages
+# models_test is used when running with --test; models_prod is the default.
+models_test:
+  profile: "gpt-4o-mini"
+  ranking: "gpt-4o-mini"
+  location: "gpt-4o-mini"
+  extraction: "gpt-4o-mini"
+
+models_prod:
+  profile: "gpt-4o"
+  ranking: "gpt-4o"
+  location: "gpt-4o-mini"
+  extraction: "gpt-4o-mini"
 
 locations:
   - name: "Montreal Greater Area"
@@ -844,7 +851,7 @@ uv run job-hunter --generate-job-search-profile
 |------|--------|
 | `--config PATH` | Configuration file path (default: `config/config.yaml`) |
 | `--generate-job-search-profile` | Regenerate job search profile only; overwrite cache; exit (no search or other steps) |
-| `--test` | Enable test mode: limit to 2 postings and automatically enable verbose (hardcoded) |
+| `--test` | Enable test mode: use `models_test`, limit to 2 postings, and automatically enable verbose |
 | `--verbose` | Enable debug logging (redundant when `--test` is also passed, since `--test` always enables verbose) |
 
 ---

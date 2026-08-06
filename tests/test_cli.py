@@ -70,7 +70,33 @@ def test_main_exits_gracefully_when_job_postings_file_missing(
     exit_code = main(["--config", str(tmp_path / "config.yaml")])
 
     assert exit_code == 1
+    mock_load_config.assert_called_once_with(Path(str(tmp_path / "config.yaml")), test_mode=False)
     captured = capsys.readouterr()
     assert "Job postings file not found" in captured.err
     assert missing_jobs.as_posix() in captured.err
     _agent_cls.from_config.return_value.run.assert_not_called()
+
+
+@patch("job_hunter.cli.JobHunterAgent")
+@patch("job_hunter.cli.setup_logging")
+@patch("job_hunter.cli.load_config")
+@patch("job_hunter.cli.load_environment")
+def test_main_passes_test_mode_to_load_config(
+    _load_environment: MagicMock,
+    mock_load_config: MagicMock,
+    _setup_logging: MagicMock,
+    agent_cls: MagicMock,
+    tmp_path: Path,
+) -> None:
+    """--test selects models_test when loading configuration."""
+    jobs_file = tmp_path / "jobs.yaml"
+    jobs_file.write_text("jobs: []\n", encoding="utf-8")
+    config = MagicMock()
+    config.posting_output = tmp_path / "output"
+    config.job_postings_file = jobs_file
+    mock_load_config.return_value = config
+    agent_cls.from_config.return_value = MagicMock()
+
+    main(["--test", "--config", str(tmp_path / "config.yaml")])
+
+    mock_load_config.assert_called_once_with(Path(str(tmp_path / "config.yaml")), test_mode=True)

@@ -19,11 +19,17 @@ resume_rework:
 
 confidence_resume: 0.90
 
-models:
-  profile: "gpt-4o-mini"      # Analyzes resume input files and generates job_search_profile.yaml
-  ranking: "gpt-4o"           # Scores each posting 0.00–1.00 for resume/job fit; use a capable model for accuracy
-  location: "gpt-4o-mini"     # Decides whether a posting location matches configured acceptable areas
-  extraction: "gpt-4o-mini"   # Extracts company, title, location, address, and description from posting pages
+models_test:
+  profile: "gpt-4o-mini"
+  ranking: "gpt-4o-mini"
+  location: "gpt-4o-mini"
+  extraction: "gpt-4o-mini"
+
+models_prod:
+  profile: "gpt-4o"
+  ranking: "gpt-4o"
+  location: "gpt-4o-mini"
+  extraction: "gpt-4o-mini"
 
 locations:
   - name: "Montreal Greater Area"

@@ -288,11 +288,16 @@ locations:
 
 Any posting outside the acceptable locations shall be rejected.
 
-### models
+### models_test and models_prod
 
-OpenAI model identifiers for agent orchestration, job search profile generation, ranking, and other AI-assisted operations.
+OpenAI model identifiers for job search profile generation, ranking, location matching, extraction, and other AI-assisted operations.
 
-Model selection shall be configurable and not hardcoded. The initial implementation shall use cost-effective models for most operations and allow more capable models for complex ranking or ambiguous cases.
+The configuration shall define two model sets:
+
+- **`models_test`** — cheaper models used when the CLI is run with `--test`
+- **`models_prod`** — models used for normal production runs (without `--test`)
+
+Each set shall include `profile`, `ranking`, `location`, and `extraction` model identifiers. Model selection shall be configurable and not hardcoded.
 
 ### confidence_resume
 

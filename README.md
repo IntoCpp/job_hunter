@@ -14,6 +14,8 @@ Job-Hunter is an AI-assisted Python application that processes user-provided job
 
 Copy `config/config.yaml.example` to `config/config.yaml` and adjust paths.
 
+Define both `models_test` (cheaper models for `--test` runs) and `models_prod` (production models). The CLI selects the appropriate set automatically.
+
 Set `job_postings_file` to your list of postings (see `config/jobs_to_process.yaml.example`):
 
 ```yaml
@@ -37,8 +39,8 @@ uv run job-hunter --config config/config.yaml
 Useful options:
 
 ```bash
-uv run job-hunter --test --skip-resume --config config/config.yaml
-uv run job-hunter --max 5 --config config/config.yaml
+uv run job-hunter --test --skip-resume --config config/config.yaml   # uses models_test
+uv run job-hunter --max 5 --config config/config.yaml                # uses models_prod
 uv run job-hunter --url-postings ./my_jobs.yaml --config config/config.yaml
 ```
 

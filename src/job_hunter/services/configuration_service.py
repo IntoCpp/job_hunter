@@ -48,11 +48,23 @@ def _resolve_path(value: str, base_dir: Path) -> Path:
     return (base_dir / path).resolve()
 
 
-def load_config(config_path: Path) -> AppConfig:
+def _parse_model_config(data: object, *, section_name: str) -> ModelConfig:
+    if not isinstance(data, dict):
+        raise ValueError(f"{section_name} must be a mapping")
+    return ModelConfig(
+        profile=str(data.get("profile", "gpt-4o-mini")),
+        ranking=str(data.get("ranking", "gpt-4o")),
+        location=str(data.get("location", "gpt-4o-mini")),
+        extraction=str(data.get("extraction", "gpt-4o-mini")),
+    )
+
+
+def load_config(config_path: Path, *, test_mode: bool = False) -> AppConfig:
     """Load application configuration from a YAML file.
 
     Parameters:
         config_path: Path to the YAML configuration file.
+        test_mode: When True, use ``models_test``; otherwise use ``models_prod``.
 
     Returns:
         Parsed AppConfig instance.
@@ -89,7 +101,12 @@ def load_config(config_path: Path) -> AppConfig:
     job_postings_file = _resolve_path(str(data.get("job_postings_file", "")), base_dir)
 
     resume_rework_data = data.get("resume_rework") or {}
-    models_data = data.get("models") or {}
+    if "models_test" not in data:
+        raise ValueError("models_test is required")
+    if "models_prod" not in data:
+        raise ValueError("models_prod is required")
+    models_section = "models_test" if test_mode else "models_prod"
+    models = _parse_model_config(data.get(models_section), section_name=models_section)
 
     return AppConfig(
         posting_output=_resolve_path(str(data.get("posting_output", "")), base_dir),
@@ -105,12 +122,7 @@ def load_config(config_path: Path) -> AppConfig:
             working_directory=Path(str(resume_rework_data.get("working_directory", ""))),
         ),
         confidence_resume=float(data.get("confidence_resume", 0.9)),
-        models=ModelConfig(
-            profile=str(models_data.get("profile", "gpt-4o-mini")),
-            ranking=str(models_data.get("ranking", "gpt-4o")),
-            location=str(models_data.get("location", "gpt-4o-mini")),
-            extraction=str(models_data.get("extraction", "gpt-4o-mini")),
-        ),
+        models=models,
         locations=[
             LocationConfig(name=str(item.get("name", "")), guidance=str(item.get("guidance", "")))
             for item in data.get("locations", [])
