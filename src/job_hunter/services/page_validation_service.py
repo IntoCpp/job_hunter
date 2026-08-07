@@ -71,6 +71,9 @@ def validate_downloaded_page(content: str) -> DownloadValidationResult:
     ):
         return _failed(PageType.CLOUDFLARE_BLOCK, "Cloudflare block page")
 
+    if _has_usable_job_posting_content(lowered):
+        return DownloadValidationResult(status=StageStatus.SUCCESS, page_type=PageType.VALID_JOB_POSTING)
+
     if _matches_any(lowered, _CAPTCHA_MARKERS):
         return _failed(PageType.CAPTCHA, "CAPTCHA page")
 
@@ -85,9 +88,6 @@ def validate_downloaded_page(content: str) -> DownloadValidationResult:
 
     if _looks_like_search_results(lowered):
         return _failed(PageType.SEARCH_RESULTS, "Search results page")
-
-    if _looks_like_job_posting(lowered):
-        return DownloadValidationResult(status=StageStatus.SUCCESS, page_type=PageType.VALID_JOB_POSTING)
 
     return _failed(PageType.UNKNOWN, "Unknown page type")
 
@@ -110,3 +110,13 @@ def _looks_like_search_results(text: str) -> bool:
 def _looks_like_job_posting(text: str) -> bool:
     marker_hits = sum(1 for marker in _JOB_POSTING_MARKERS if marker in text)
     return marker_hits >= 2 and len(text) >= _MIN_CONTENT_LENGTH
+
+
+def _has_job_posting_structured_data(text: str) -> bool:
+    """Return True when the page embeds schema.org JobPosting data."""
+    return bool(re.search(r'"@type"\s*:\s*"JobPosting"', text, re.I))
+
+
+def _has_usable_job_posting_content(text: str) -> bool:
+    """Return True when job posting content is present despite bot-protection scripts."""
+    return _looks_like_job_posting(text) or _has_job_posting_structured_data(text)

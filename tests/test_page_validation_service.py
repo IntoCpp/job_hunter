@@ -36,3 +36,33 @@ def test_validate_downloaded_page_rejects_search_results_page() -> None:
     result = validate_downloaded_page(html)
     assert result.status == StageStatus.FAILED
     assert result.page_type in {PageType.SEARCH_RESULTS, PageType.UNKNOWN}
+
+
+def test_validate_downloaded_page_accepts_job_posting_with_recaptcha_script() -> None:
+    """Job postings that embed reCAPTCHA for apply forms are not treated as CAPTCHA blocks."""
+    html = (
+        "<html><head>"
+        '<script src="https://www.recaptcha.net/recaptcha/api.js?render=example"></script>'
+        "</head><body>"
+        "<h1>Software Development Specialist</h1>"
+        "<section>Job description with responsibilities and qualifications for the role.</section>"
+        "<p>Apply now to join our engineering team.</p>"
+        '<script type="application/ld+json">{"@type": "JobPosting", "title": "Engineer"}</script>'
+        "</body></html>"
+    ) * 3
+    result = validate_downloaded_page(html)
+    assert result.status == StageStatus.SUCCESS
+    assert result.page_type == PageType.VALID_JOB_POSTING
+
+
+def test_validate_downloaded_page_rejects_standalone_captcha_page() -> None:
+    """Standalone CAPTCHA challenge pages without job content still fail validation."""
+    html = (
+        "<html><body>"
+        '<div class="g-recaptcha">Please verify you are human</div>'
+        '<script src="https://www.google.com/recaptcha/api.js"></script>'
+        "</body></html>"
+    ) * 20
+    result = validate_downloaded_page(html)
+    assert result.status == StageStatus.FAILED
+    assert result.page_type == PageType.CAPTCHA
