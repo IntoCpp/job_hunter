@@ -10,6 +10,7 @@ from pathlib import Path
 from job_hunter.agent.orchestrator import JobHunterAgent, RunOptions
 from job_hunter.services.configuration_service import load_config, load_environment
 from job_hunter.services.job_list_service import format_missing_job_postings_message, job_postings_file_exists
+from job_hunter.utils.console_prompt import prompt_browser_debug_ready
 from job_hunter.utils.logging_config import default_log_file, setup_logging
 
 logger = logging.getLogger(__name__)
@@ -96,6 +97,9 @@ def main(argv: list[str] | None = None) -> int:
             print(message, file=sys.stderr)
             logger.error(message)
             return 1
+
+        if not args.test and sys.stdin.isatty():
+            prompt_browser_debug_ready(debug_port=config.browser_session.debug_port)
 
         job_postings_file = jobs_path if args.url_postings else None
         run_options = RunOptions(

@@ -7,6 +7,7 @@ import yaml
 
 from job_hunter.models.config import (
     AppConfig,
+    BrowserSessionConfig,
     JobSearchPreferencesConfig,
     ModelConfig,
     ResumeReworkConfig,
@@ -33,6 +34,7 @@ def _config(tmp_path: Path) -> AppConfig:
         confidence_resume=0.9,
         models=ModelConfig("profile", "ranking", "location", "extraction"),
         locations=[],
+        browser_session=BrowserSessionConfig(),
         config_path=tmp_path / "config.yaml",
     )
 

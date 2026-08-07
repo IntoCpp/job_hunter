@@ -114,6 +114,7 @@ class HistoryService:
         *,
         markdown_path: str,
         ranking_result: RankingResult | None = None,
+        retrieval_method: str = "",
         seen_on: date | None = None,
     ) -> None:
         """Add a newly accepted posting to history."""
@@ -133,7 +134,7 @@ class HistoryService:
             top_matching_qualification=top_match,
             largest_qualification_gap=largest_gap,
             markdown_path=markdown_path,
-            metadata=_build_metadata(posting),
+            metadata=_build_metadata(posting, retrieval_method=retrieval_method),
         )
         self._accepted.append(entry)
         self._index[entry.duplicate_key()] = entry
@@ -144,11 +145,12 @@ class HistoryService:
         *,
         markdown_path: str,
         rejection_reason: str,
+        retrieval_method: str = "",
         seen_on: date | None = None,
     ) -> None:
         """Add a posting rejected before ranking."""
         today = seen_on or date.today()
-        metadata = _build_metadata(posting)
+        metadata = _build_metadata(posting, retrieval_method=retrieval_method)
         metadata["rejection_reason"] = rejection_reason
         entry = PostingHistoryEntry(
             company=_history_company(posting.company),
@@ -170,16 +172,26 @@ class HistoryService:
         failure_reason: str,
         source: str,
         page_type: str,
+        company: str = "",
+        retrieval_attempts: list[str] | None = None,
+        error_details: str = "",
         seen_on: date | None = None,
     ) -> None:
         """Record a failed download validation."""
+        metadata: dict[str, str] = {"page_type": page_type}
+        if company:
+            metadata["company"] = company
+        if retrieval_attempts:
+            metadata["retrieval_attempts"] = ",".join(retrieval_attempts)
+        if error_details:
+            metadata["error_details"] = error_details
         self._failed_downloads.append(
             FailureHistoryEntry(
                 url=url,
                 date_recorded=seen_on or date.today(),
                 failure_reason=failure_reason,
                 source=source,
-                metadata={"page_type": page_type},
+                metadata=metadata,
             )
         )
 
@@ -290,11 +302,13 @@ def _history_company(company: str) -> str:
     return normalized
 
 
-def _build_metadata(posting: JobPosting) -> dict[str, str]:
+def _build_metadata(posting: JobPosting, *, retrieval_method: str = "") -> dict[str, str]:
     metadata = {
         "extraction_status": posting.extraction_status.value,
         "source": posting.source,
     }
+    if retrieval_method:
+        metadata["retrieval_method"] = retrieval_method
     if posting.extracted_company and posting.extracted_company != posting.company:
         metadata["extracted_company"] = posting.extracted_company
     if posting.language:

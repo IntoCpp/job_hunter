@@ -19,6 +19,7 @@ def save_success_artifacts(
     raw_html: str,
     extraction_data: dict[str, Any],
     ranking_data: dict[str, Any],
+    retrieval_method: str = "",
 ) -> Path:
     """Save artifacts for a successfully ranked posting.
 
@@ -38,6 +39,8 @@ def save_success_artifacts(
     (folder / "raw_download.html").write_text(raw_html, encoding="utf-8")
     _write_json(folder / "extraction.json", extraction_data)
     _write_json(folder / "ranking.json", ranking_data)
+    if retrieval_method:
+        _write_json(folder / "retrieval.json", {"retrieval_method": retrieval_method})
     markdown_path = folder / "posting.md"
     markdown_path.write_text(_format_posting_markdown(posting), encoding="utf-8")
     return markdown_path
@@ -51,6 +54,9 @@ def save_failed_download_artifacts(
     failure_reason: str,
     page_type: str,
     source: str,
+    company: str = "",
+    retrieval_attempts: list[str] | None = None,
+    error_details: str = "",
 ) -> Path:
     """Save artifacts for a failed download validation.
 
@@ -72,9 +78,12 @@ def save_failed_download_artifacts(
         folder / "validation.json",
         {
             "url": url,
+            "company": company,
             "failure_reason": failure_reason,
             "page_type": page_type,
             "source": source,
+            "retrieval_attempts": retrieval_attempts or [],
+            "error_details": error_details,
         },
     )
     return folder
@@ -117,6 +126,7 @@ def save_rejected_posting(
     raw_html: str,
     extraction_data: dict[str, Any],
     rejection_reason: str,
+    retrieval_method: str = "",
 ) -> Path:
     """Save artifacts for a posting rejected before ranking.
 
@@ -136,6 +146,8 @@ def save_rejected_posting(
     payload = dict(extraction_data)
     payload["rejection_reason"] = rejection_reason
     _write_json(folder / "extraction.json", payload)
+    if retrieval_method:
+        _write_json(folder / "retrieval.json", {"retrieval_method": retrieval_method})
     markdown_path = folder / "posting.md"
     markdown_path.write_text(_format_posting_markdown(posting, rejection_reason=rejection_reason), encoding="utf-8")
     return markdown_path

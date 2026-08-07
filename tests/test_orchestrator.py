@@ -6,6 +6,7 @@ from unittest.mock import MagicMock, patch
 from job_hunter.agent.orchestrator import JobHunterAgent, RunOptions
 from job_hunter.models.config import (
     AppConfig,
+    BrowserSessionConfig,
     JobSearchPreferencesConfig,
     ModelConfig,
     ResumeReworkConfig,
@@ -15,6 +16,7 @@ from job_hunter.models.job_posting import JobPosting
 from job_hunter.models.job_search_profile import JobSearchProfile
 from job_hunter.models.job_to_process import USER_INPUT_SOURCE, JobToProcess
 from job_hunter.models.pipeline import RankingResult, StageStatus
+from job_hunter.models.retrieval import RetrievalResult
 
 
 def _config(tmp_path: Path) -> AppConfig:
@@ -33,6 +35,7 @@ def _config(tmp_path: Path) -> AppConfig:
         confidence_resume=0.9,
         models=ModelConfig("profile", "ranking", "location", "extraction"),
         locations=[],
+        browser_session=BrowserSessionConfig(),
         config_path=tmp_path / "config.yaml",
     )
 
@@ -53,14 +56,12 @@ def _sample_job() -> JobToProcess:
 
 @patch("job_hunter.agent.orchestrator.load_job_postings")
 @patch("job_hunter.agent.orchestrator.save_success_artifacts")
-@patch("job_hunter.agent.orchestrator.validate_downloaded_page")
 def test_agent_run_processes_posting(
-    mock_validate: MagicMock,
     mock_save_artifacts: MagicMock,
     mock_load_jobs: MagicMock,
     tmp_path: Path,
 ) -> None:
-    """Agent downloads, validates, extracts, ranks, saves, and updates history."""
+    """Agent retrieves, extracts, ranks, saves, and updates history."""
     config = _config(tmp_path)
     (tmp_path / "resume.md").write_text("# Resume", encoding="utf-8")
     profile = JobSearchProfile(target_titles=["Manager"])
@@ -74,15 +75,18 @@ def test_agent_run_processes_posting(
     )
     posting.confidence_score = 0.95
     mock_load_jobs.return_value = [_sample_job()]
-    mock_validate.return_value = MagicMock(status=StageStatus.SUCCESS)
     mock_save_artifacts.return_value = tmp_path / "output" / "Example Corp" / "Engineering Manager" / "posting.md"
 
     profile_service = MagicMock()
     profile_service.load_or_generate.return_value = profile
     history = MagicMock()
     history.is_duplicate.return_value = False
-    download = MagicMock()
-    download.download.return_value = _valid_job_html()
+    retrieval = MagicMock()
+    retrieval.retrieve.return_value = RetrievalResult(
+        success=True,
+        content=_valid_job_html(),
+        retrieval_method="http",
+    )
     extract = MagicMock()
     extract.extract.return_value = (posting, {"extraction_status": "SUCCESS"})
     rank = MagicMock()
@@ -94,7 +98,7 @@ def test_agent_run_processes_posting(
         config,
         profile_service=profile_service,
         history_service=history,
-        download_tool=download,
+        retrieval_service=retrieval,
         extraction_tool=extract,
         ranking_tool=rank,
         resume_tool=resume,
@@ -106,7 +110,7 @@ def test_agent_run_processes_posting(
     history.add_entry.assert_called_once()
     extract.extract.assert_called_once_with(
         url="https://example.com/job/1",
-        content=download.download.return_value,
+        content=retrieval.retrieve.return_value.content,
         user_company="Example Corp",
         source=USER_INPUT_SOURCE,
     )
@@ -114,28 +118,26 @@ def test_agent_run_processes_posting(
 
 
 @patch("job_hunter.agent.orchestrator.load_job_postings")
-@patch("job_hunter.agent.orchestrator.validate_downloaded_page")
-def test_agent_skips_invalid_download(
-    mock_validate: MagicMock,
+def test_agent_skips_failed_retrieval(
     mock_load_jobs: MagicMock,
     tmp_path: Path,
 ) -> None:
-    """Invalid downloaded pages are recorded and skip extraction."""
+    """Failed retrieval is recorded and extraction is skipped."""
     config = _config(tmp_path)
     (tmp_path / "resume.md").write_text("# Resume", encoding="utf-8")
     profile = JobSearchProfile(target_titles=["Manager"])
     mock_load_jobs.return_value = [_sample_job()]
-    mock_validate.return_value = MagicMock(
-        status=StageStatus.FAILED,
-        failure_reason="Cloudflare block page",
-        page_type=MagicMock(value="cloudflare_block"),
-    )
 
     profile_service = MagicMock()
     profile_service.load_or_generate.return_value = profile
     history = MagicMock()
-    download = MagicMock()
-    download.download.return_value = "<html>Just a moment... cloudflare challenge-platform</html>" * 20
+    retrieval = MagicMock()
+    retrieval.retrieve.return_value = RetrievalResult(
+        success=False,
+        content="<html>blocked</html>",
+        attempts=[],
+        failure_reason="Cloudflare block page",
+    )
     extract = MagicMock()
     rank = MagicMock()
     resume = MagicMock()
@@ -144,7 +146,7 @@ def test_agent_skips_invalid_download(
         config,
         profile_service=profile_service,
         history_service=history,
-        download_tool=download,
+        retrieval_service=retrieval,
         extraction_tool=extract,
         ranking_tool=rank,
         resume_tool=resume,
@@ -159,9 +161,7 @@ def test_agent_skips_invalid_download(
 
 
 @patch("job_hunter.agent.orchestrator.load_job_postings")
-@patch("job_hunter.agent.orchestrator.validate_downloaded_page")
 def test_agent_skips_duplicate(
-    mock_validate: MagicMock,
     mock_load_jobs: MagicMock,
     tmp_path: Path,
 ) -> None:
@@ -178,14 +178,17 @@ def test_agent_skips_duplicate(
         source=USER_INPUT_SOURCE,
     )
     mock_load_jobs.return_value = [JobToProcess(company="Corp", url="https://example.com/1")]
-    mock_validate.return_value = MagicMock(status=StageStatus.SUCCESS)
+    retrieval = MagicMock()
+    retrieval.retrieve.return_value = RetrievalResult(
+        success=True,
+        content=_valid_job_html(),
+        retrieval_method="http",
+    )
 
     profile_service = MagicMock()
     profile_service.load_or_generate.return_value = profile
     history = MagicMock()
     history.is_duplicate.return_value = True
-    download = MagicMock()
-    download.download.return_value = _valid_job_html()
     extract = MagicMock()
     extract.extract.return_value = (posting, {"extraction_status": "SUCCESS"})
     rank = MagicMock()
@@ -195,7 +198,7 @@ def test_agent_skips_duplicate(
         config,
         profile_service=profile_service,
         history_service=history,
-        download_tool=download,
+        retrieval_service=retrieval,
         extraction_tool=extract,
         ranking_tool=rank,
         resume_tool=resume,

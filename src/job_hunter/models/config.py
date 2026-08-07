@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 
@@ -49,6 +49,28 @@ class LocationConfig:
 
 
 @dataclass
+class BrowserSessionBrowserConfig:
+    """Optional persistent-profile fallback settings.
+
+    Supported types: ``edge``, ``chrome``. Firefox is not supported.
+    ``user_data_dir`` must be set explicitly; the live default browser profile is never used.
+    """
+
+    type: str
+    executable: str = ""
+    user_data_dir: str = ""
+
+
+@dataclass
+class BrowserSessionConfig:
+    """Configuration for browser session retrieval fallback via CDP."""
+
+    debug_host: str = "127.0.0.1"
+    debug_port: int = 9222
+    browsers: list[BrowserSessionBrowserConfig] = field(default_factory=list)
+
+
+@dataclass
 class AppConfig:
     """Top-level application configuration loaded from YAML."""
 
@@ -60,4 +82,5 @@ class AppConfig:
     confidence_resume: float
     models: ModelConfig
     locations: list[LocationConfig]
+    browser_session: BrowserSessionConfig
     config_path: Path

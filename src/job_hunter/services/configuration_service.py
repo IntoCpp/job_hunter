@@ -10,6 +10,8 @@ from dotenv import load_dotenv
 
 from job_hunter.models.config import (
     AppConfig,
+    BrowserSessionBrowserConfig,
+    BrowserSessionConfig,
     JobSearchPreferencesConfig,
     LocationConfig,
     ModelConfig,
@@ -56,6 +58,31 @@ def _parse_model_config(data: object, *, section_name: str) -> ModelConfig:
         ranking=str(data.get("ranking", "gpt-4o")),
         location=str(data.get("location", "gpt-4o-mini")),
         extraction=str(data.get("extraction", "gpt-4o-mini")),
+    )
+
+
+def _parse_browser_session_config(data: object) -> BrowserSessionConfig:
+    if not isinstance(data, dict):
+        return BrowserSessionConfig()
+    browsers: list[BrowserSessionBrowserConfig] = []
+    for item in data.get("browsers", []):
+        if not isinstance(item, dict):
+            continue
+        browser_type = str(item.get("type", "")).strip().casefold()
+        if not browser_type:
+            continue
+        browsers.append(
+            BrowserSessionBrowserConfig(
+                type=browser_type,
+                executable=str(item.get("executable", "")),
+                user_data_dir=str(item.get("user_data_dir", "")),
+            )
+        )
+    debug_port = data.get("debug_port", 9222)
+    return BrowserSessionConfig(
+        debug_host=str(data.get("debug_host", "127.0.0.1")),
+        debug_port=int(debug_port),
+        browsers=browsers,
     )
 
 
@@ -127,5 +154,6 @@ def load_config(config_path: Path, *, test_mode: bool = False) -> AppConfig:
             LocationConfig(name=str(item.get("name", "")), guidance=str(item.get("guidance", "")))
             for item in data.get("locations", [])
         ],
+        browser_session=_parse_browser_session_config(data.get("browser_session")),
         config_path=config_path.resolve(),
     )

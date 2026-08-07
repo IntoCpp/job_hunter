@@ -337,14 +337,27 @@ Playwright-based fallback for websites that:
 
 Implemented behind a dedicated tool interface to allow future replacement (including MCP-based services).
 
+## 8.3.1 Browser Session Fallback Tool
+
+CDP-based fallback for pages that block headless HTTP or Playwright retrieval.
+
+* Connects to a **running** Edge or Chrome instance started with remote debugging enabled.
+* Default endpoint: `http://127.0.0.1:9222` (configurable via `browser_session.debug_host` and `debug_port`).
+* Job-Hunter does **not** launch the user's browser; the CLI prompts for confirmation before processing.
+* Optional fallback: explicit `browser_session.browsers` entries with a dedicated `user_data_dir` only (never the live default profile).
+* Firefox is not supported for browser session fallback.
+
 ## 8.4 Download Tool
 
-Retrieves job posting content from a user-provided URL.
+Retrieves job posting content from a user-provided URL using a modular multi-step strategy implemented in `PostingRetrievalService`.
 
 Strategy:
 
 1. HTTP request (preferred)
-2. Playwright browser automation (fallback for JavaScript-rendered or dynamic pages)
+2. Playwright browser automation when HTTP retrieval or validation fails
+3. Browser session via CDP connect when Playwright retrieval or validation fails
+
+Each step validates the downloaded page before accepting it. The successful retrieval method (`http`, `playwright`, or `browser_session`) is recorded in posting history metadata and saved posting artifacts.
 
 Input: URL from the job postings file
 
@@ -435,7 +448,9 @@ Responsibilities:
 
 When a duplicate is detected, `date_last_seen` is updated and further processing for that posting is skipped.
 
-Failed downloads and extractions record URL, date, failure reason, and source for later inspection.
+Failed downloads and extractions record URL, date, failure reason, source, company (when available), and retrieval attempts for later inspection.
+
+When all retrieval methods fail, the orchestrator prints a visible CLI summary listing failed download artifact paths. Retrieval failures are recorded in `failed_downloads.yaml` and `posting_output/failed_downloads/`.
 
 ## 8.8 Resume Tool
 
@@ -535,7 +550,7 @@ Download
 
 ↓
 
-Validate Download (block pages, search results, login/CAPTCHA, etc.)
+Validate Download (block pages, search results, login/CAPTCHA, etc.; retry with next retrieval method on failure)
 
 ↓
 
@@ -837,6 +852,16 @@ locations:
     guidance: "Montreal and surrounding areas accessible by public transport or reasonable commute"
   - name: "South Shore"
     guidance: "Longueuil, Brossard, Saint-Hubert, and nearby cities"
+
+# Optional browser session fallback (Edge/Chrome only; Firefox is not supported)
+browser_session:
+  debug_host: "127.0.0.1"
+  debug_port: 9222
+  # Optional persistent-profile fallback; user_data_dir must be a dedicated profile path.
+  browsers:
+    - type: edge
+      executable: ""
+      user_data_dir: ""
 ```
 
 ### CLI Override

@@ -5,6 +5,7 @@ from unittest.mock import MagicMock
 
 from job_hunter.models.config import (
     AppConfig,
+    BrowserSessionConfig,
     JobSearchPreferencesConfig,
     ModelConfig,
     ResumeReworkConfig,
@@ -40,6 +41,7 @@ def test_extraction_tool_preserves_language(tmp_path: Path) -> None:
         confidence_resume=0.9,
         models=ModelConfig("profile", "ranking", "location", "extraction"),
         locations=[],
+        browser_session=BrowserSessionConfig(),
         config_path=tmp_path / "config.yaml",
     )
     llm = MagicMock()

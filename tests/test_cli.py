@@ -100,3 +100,62 @@ def test_main_passes_test_mode_to_load_config(
     main(["--test", "--config", str(tmp_path / "config.yaml")])
 
     mock_load_config.assert_called_once_with(Path(str(tmp_path / "config.yaml")), test_mode=True)
+
+
+@patch("job_hunter.cli.prompt_browser_debug_ready")
+@patch("job_hunter.cli.JobHunterAgent")
+@patch("job_hunter.cli.setup_logging")
+@patch("job_hunter.cli.load_config")
+@patch("job_hunter.cli.load_environment")
+def test_main_prompts_for_browser_debug_in_interactive_mode(
+    _load_environment: MagicMock,
+    mock_load_config: MagicMock,
+    _setup_logging: MagicMock,
+    agent_cls: MagicMock,
+    mock_prompt: MagicMock,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Interactive production runs prompt for a debug-enabled browser before processing."""
+    jobs_file = tmp_path / "jobs.yaml"
+    jobs_file.write_text("- company: Example\n  url: https://example.com/job/1\n", encoding="utf-8")
+    config = MagicMock()
+    config.posting_output = tmp_path / "output"
+    config.job_postings_file = jobs_file
+    config.browser_session.debug_port = 9222
+    mock_load_config.return_value = config
+    agent_cls.from_config.return_value = MagicMock()
+    monkeypatch.setattr("job_hunter.cli.sys.stdin.isatty", lambda: True)
+
+    main(["--config", str(tmp_path / "config.yaml")])
+
+    mock_prompt.assert_called_once_with(debug_port=9222)
+
+
+@patch("job_hunter.cli.prompt_browser_debug_ready")
+@patch("job_hunter.cli.JobHunterAgent")
+@patch("job_hunter.cli.setup_logging")
+@patch("job_hunter.cli.load_config")
+@patch("job_hunter.cli.load_environment")
+def test_main_skips_browser_prompt_in_test_mode(
+    _load_environment: MagicMock,
+    mock_load_config: MagicMock,
+    _setup_logging: MagicMock,
+    agent_cls: MagicMock,
+    mock_prompt: MagicMock,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Test mode skips the browser debug prompt."""
+    jobs_file = tmp_path / "jobs.yaml"
+    jobs_file.write_text("- company: Example\n  url: https://example.com/job/1\n", encoding="utf-8")
+    config = MagicMock()
+    config.posting_output = tmp_path / "output"
+    config.job_postings_file = jobs_file
+    mock_load_config.return_value = config
+    agent_cls.from_config.return_value = MagicMock()
+    monkeypatch.setattr("job_hunter.cli.sys.stdin.isatty", lambda: True)
+
+    main(["--test", "--config", str(tmp_path / "config.yaml")])
+
+    mock_prompt.assert_not_called()

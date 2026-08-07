@@ -8,6 +8,7 @@ import pytest
 from job_hunter.agent.orchestrator import JobHunterAgent, RunOptions
 from job_hunter.models.config import (
     AppConfig,
+    BrowserSessionConfig,
     JobSearchPreferencesConfig,
     ModelConfig,
     ResumeReworkConfig,
@@ -18,6 +19,7 @@ from job_hunter.models.job_search_preferences import JobSearchPreferences, Prefe
 from job_hunter.models.job_search_profile import JobSearchProfile
 from job_hunter.models.job_to_process import JobToProcess, USER_INPUT_SOURCE
 from job_hunter.models.pipeline import RankingResult, StageStatus
+from job_hunter.models.retrieval import RetrievalResult
 from job_hunter.services.configuration_service import load_config
 from job_hunter.services.filtering_service import is_excluded_posting
 from job_hunter.services.preferences_service import format_preferences_for_prompt, load_job_search_preferences
@@ -115,15 +117,14 @@ def _agent_config(tmp_path: Path) -> AppConfig:
         confidence_resume=0.9,
         models=ModelConfig("profile", "ranking", "location", "extraction"),
         locations=[],
+        browser_session=BrowserSessionConfig(),
         config_path=tmp_path / "config.yaml",
     )
 
 
 @patch("job_hunter.agent.orchestrator.load_job_postings")
 @patch("job_hunter.agent.orchestrator.save_success_artifacts")
-@patch("job_hunter.agent.orchestrator.validate_downloaded_page")
 def test_agent_run_passes_preferences_to_ranking(
-    mock_validate: MagicMock,
     mock_save_artifacts: MagicMock,
     mock_load_jobs: MagicMock,
     tmp_path: Path,
@@ -141,15 +142,18 @@ def test_agent_run_passes_preferences_to_ranking(
         source=USER_INPUT_SOURCE,
     )
     mock_load_jobs.return_value = [JobToProcess(company="Example Corp", url="https://example.com/job/1")]
-    mock_validate.return_value = MagicMock(status=StageStatus.SUCCESS)
     mock_save_artifacts.return_value = tmp_path / "output" / "posting.md"
 
     profile_service = MagicMock()
     profile_service.load_or_generate.return_value = profile
     history = MagicMock()
     history.is_duplicate.return_value = False
-    download = MagicMock()
-    download.download.return_value = "<html>job description responsibilities qualifications apply now</html>" * 20
+    retrieval = MagicMock()
+    retrieval.retrieve.return_value = RetrievalResult(
+        success=True,
+        content="<html>job description responsibilities qualifications apply now</html>" * 20,
+        retrieval_method="http",
+    )
     extract = MagicMock()
     extract.extract.return_value = (posting, {"extraction_status": "SUCCESS"})
     rank = MagicMock()
@@ -161,7 +165,7 @@ def test_agent_run_passes_preferences_to_ranking(
         config,
         profile_service=profile_service,
         history_service=history,
-        download_tool=download,
+        retrieval_service=retrieval,
         extraction_tool=extract,
         ranking_tool=rank,
         resume_tool=resume,
