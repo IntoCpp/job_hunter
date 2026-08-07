@@ -2,6 +2,10 @@
 
 Job-Hunter is an AI-assisted Python application that processes user-provided job posting URLs, ranks them against a candidate profile, saves the results locally, and can automatically invoke a resume customization script for high-confidence matches.
 
+> **Project status:** On hold.
+>
+> The project's objectives have been successfully completed. It provided valuable hands-on experience with Cursor and AI agents, and resulted in a solution that extracts meaningful information from job postings to help prioritize the most promising opportunities.
+
 ## Documentation
 
 * **requirements.md** — Functional requirements and project objectives.
