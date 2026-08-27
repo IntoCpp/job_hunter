@@ -13,7 +13,10 @@ The project documentation is organized as follows:
 
 ## Status
 
-Project currently in the design phase.
+Project currently **on hold** for the foreseeable future.
+See branch `job_search_experiment` for the latest dev.
+
+This project was "phase-2" of the project [job-hunter-resume-rework](https://github.com/IntoCpp/job-hunter-resume-rework), where I completed the "resume rework" part. This was to try/test the "search web for relevant jobs" part and fuse it later. But as noted in `job_search_experiment` branch "Competing with specialized job search platforms (such as LinkedIn) is well beyond the scope of this personal project."
 
 ## Work plan
 
